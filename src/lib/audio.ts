@@ -2,7 +2,7 @@ import { readDir, stat, readTextFile, writeTextFile } from "@tauri-apps/plugin-f
 import { join } from "@tauri-apps/api/path";
 import { Track } from "../types";
 
-// mtdt.json の audiofiles 配列の1レコード型（既知フィールドのみ）
+// mtdt.json の1レコード型（既知フィールドのみ）
 type MtdtRecord = {
   filename: string;
   transcript?: string;
@@ -12,22 +12,32 @@ type MtdtRecord = {
   [key: string]: unknown;
 };
 
+// 新形式: audiofiles は filename をキーとした辞書
 type MtdtFile = {
-  audiofiles?: MtdtRecord[];
+  audiofiles?: Record<string, MtdtRecord> | MtdtRecord[]; // 旧形式(配列)との互換のためunion
   [key: string]: unknown;
 };
 
-/** mtdt.json を読み込んで filename をキーとしたマップを返す。失敗時は空オブジェクトと元データを返す */
+/** mtdt.json の audiofiles を filename キーの Map に正規化して返す */
+function parseAudiofiles(audiofiles: MtdtFile["audiofiles"]): Map<string, MtdtRecord> {
+  const map = new Map<string, MtdtRecord>();
+  if (!audiofiles) return map;
+  if (Array.isArray(audiofiles)) {
+    // 旧形式(配列)を辞書に変換
+    for (const r of audiofiles) map.set(r.filename, r);
+  } else {
+    for (const [k, v] of Object.entries(audiofiles)) map.set(k, v as MtdtRecord);
+  }
+  return map;
+}
+
+/** mtdt.json を読み込んで filename をキーとしたマップを返す */
 export async function loadMtdt(folderPath: string): Promise<{ map: Map<string, MtdtRecord>; raw: MtdtFile }> {
   const mtdtPath = await join(folderPath, "mtdt.json");
   try {
     const text = await readTextFile(mtdtPath);
     const raw: MtdtFile = JSON.parse(text);
-    const map = new Map<string, MtdtRecord>();
-    for (const r of raw.audiofiles ?? []) {
-      map.set(r.filename, r);
-    }
-    return { map, raw };
+    return { map: parseAudiofiles(raw.audiofiles), raw };
   } catch {
     return { map: new Map(), raw: {} };
   }
@@ -37,24 +47,19 @@ export async function loadMtdt(folderPath: string): Promise<{ map: Map<string, M
 export async function saveMtdt(folderPath: string, tracks: Track[]): Promise<void> {
   const mtdtPath = await join(folderPath, "mtdt.json");
 
-  // 既存ファイルを読み込む（なければ空）
   let raw: MtdtFile = {};
   try {
     const text = await readTextFile(mtdtPath);
     raw = JSON.parse(text);
-  } catch {
-    // 存在しない場合は新規作成
-  }
+  } catch { /* 存在しない場合は新規作成 */ }
 
-  const existingMap = new Map<string, MtdtRecord>();
-  for (const r of raw.audiofiles ?? []) {
-    existingMap.set(r.filename, r);
-  }
+  const existingMap = parseAudiofiles(raw.audiofiles);
 
-  // 現在のトラック一覧でレコードを生成（存在しないファイルは除外）
-  const audiofiles: MtdtRecord[] = tracks.map((t) => {
+  // 現在のトラック一覧で辞書を生成（存在しないファイルは除外）
+  const audiofiles: Record<string, MtdtRecord> = {};
+  for (const t of tracks) {
     const existing = existingMap.get(t.name) ?? { filename: t.name };
-    return {
+    audiofiles[t.name] = {
       ...existing,
       filename: t.name,
       good: t.good,
@@ -62,7 +67,7 @@ export async function saveMtdt(folderPath: string, tracks: Track[]): Promise<voi
       ...(t.transcript ? { transcript: t.transcript } : {}),
       ...(t.duration > 0 ? { duration: t.duration } : {}),
     };
-  });
+  }
 
   const output: MtdtFile = { ...raw, audiofiles };
   await writeTextFile(mtdtPath, JSON.stringify(output, null, 2));
