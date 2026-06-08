@@ -62,6 +62,7 @@ export default function App() {
       setBadFolderName(await settings.getBadFolderName());
       const savedPlayMode = await settings.getPlayMode();
       dispatch({ type: "SET_PLAY_MODE", mode: savedPlayMode as PlayMode });
+      settingsLoadedRef.current = true;
     });
   }, []);
 
@@ -95,10 +96,10 @@ export default function App() {
     await settings.setBadFolderName(name);
   }, []);
 
-  // playMode 変化時に設定保存（初回マウント時はスキップ）
-  const isFirstRender = useRef(true);
+  // playMode 変化時に設定保存（設定ロード完了後のみ）
+  const settingsLoadedRef = useRef(false);
   useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (!settingsLoadedRef.current) return;
     AppSettings.load().then((s) => s.setPlayMode(state.playMode));
   }, [state.playMode]);
 
