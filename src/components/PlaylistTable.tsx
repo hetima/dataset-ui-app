@@ -7,7 +7,8 @@ import {
   createColumnHelper,
   SortingState,
 } from "@tanstack/react-table";
-import { useState, forwardRef } from "react";
+import { useState, forwardRef, useEffect, useRef } from "react";
+import { Star, ThumbsDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -29,6 +30,17 @@ type Props = {
 const columnHelper = createColumnHelper<Track>();
 
 const columns = [
+  columnHelper.display({
+    id: "status",
+    header: "",
+    size: 32,
+    cell: (info) => {
+      const { good, bad } = info.row.original;
+      if (good) return <Star className="w-3.5 h-3.5 shrink-0" />;
+      if (bad)  return <ThumbsDown className="w-3.5 h-3.5 shrink-0" />;
+      return null;
+    },
+  }),
   columnHelper.accessor("name", {
     header: "ファイル名",
     cell: (info) => <span className="truncate block max-w-xs">{info.getValue()}</span>,
@@ -47,6 +59,14 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
   onSelect,
 }, ref) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (currentIndex === null) return;
+    const container = (ref as React.RefObject<HTMLDivElement>)?.current ?? containerRef.current;
+    const row = container?.querySelector<HTMLElement>(`[data-index="${currentIndex}"]`);
+    row?.scrollIntoView({ block: "nearest" });
+  }, [currentIndex]);
 
   const table = useReactTable({
     data: tracks,
@@ -69,8 +89,8 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
               {hg.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className="cursor-pointer select-none"
-                  onClick={header.column.getToggleSortingHandler()}
+                  className={`select-none ${header.column.id === "status" ? "w-6 p-0" : "cursor-pointer"}`}
+                  onClick={header.column.id !== "status" ? header.column.getToggleSortingHandler() : undefined}
                 >
                   {flexRender(header.column.columnDef.header, header.getContext())}
                   {header.column.getIsSorted() === "asc" ? " ↑" : header.column.getIsSorted() === "desc" ? " ↓" : ""}
@@ -86,11 +106,16 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
             return (
               <TableRow
                 key={row.id}
-                className={`cursor-pointer ${isCurrent ? "bg-primary/20 font-semibold" : ""}`}
+                data-index={originalIndex}
+                className={`cursor-pointer ${isCurrent ? "bg-primary/20 font-semibold" : ""} ${row.original.bad ? "text-red-700" : ""}`}
                 onClick={() => onSelect(originalIndex)}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell
+                    key={cell.id}
+                    className={cell.column.id === "status" ? "w-6 p-0" : ""}
+                    style={cell.column.id === "status" ? { paddingLeft: "6px" } : {}}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}

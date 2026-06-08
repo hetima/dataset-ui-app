@@ -149,6 +149,25 @@ export default function App() {
           : 0;
         dispatch({ type: "SET_CURRENT", index: next });
       }
+      if ((e.code === "KeyF" || e.code === "KeyG") && !e.ctrlKey && state.currentIndex !== null) {
+        dispatch({ type: "SET_GOOD", index: state.currentIndex });
+      }
+      if (e.code === "KeyB" && state.currentIndex !== null) {
+        dispatch({ type: "SET_BAD", index: state.currentIndex });
+      }
+      if (e.code === "ArrowLeft" && state.currentIndex !== null) {
+        e.preventDefault();
+        e.stopPropagation();
+        dispatch({ type: "SET_GOOD", index: state.currentIndex });
+      }
+      if (e.code === "ArrowRight" && state.currentIndex !== null) {
+        e.preventDefault();
+        e.stopPropagation();
+        dispatch({ type: "SET_BAD", index: state.currentIndex });
+      }
+      if ((e.code === "Delete" || e.code === "Backspace" || e.code === "KeyH" || e.code === "KeyC") && state.currentIndex !== null) {
+        dispatch({ type: "CLEAR_RATING", index: state.currentIndex });
+      }
     };
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
@@ -200,7 +219,11 @@ export default function App() {
           ref={tableRef}
           onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
         />
-        <DetailPanel track={currentTrack} />
+        <DetailPanel
+          track={currentTrack}
+          onSetGood={() => state.currentIndex !== null && dispatch({ type: "SET_GOOD", index: state.currentIndex })}
+          onSetBad={() => state.currentIndex !== null && dispatch({ type: "SET_BAD", index: state.currentIndex })}
+        />
       </div>
       <audio
         ref={audioRef}

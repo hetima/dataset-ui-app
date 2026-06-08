@@ -3,6 +3,8 @@ export type Track = {
   name: string;
   duration: number; // 秒
   size: number;     // バイト
+  good: boolean;
+  bad: boolean;
 };
 
 export type PlayMode = "stop" | "continuous" | "repeat";
@@ -22,4 +24,7 @@ export type Action =
   | { type: "SET_PLAYING"; playing: boolean }
   | { type: "CYCLE_PLAY_MODE" }
   | { type: "SET_SEARCH"; query: string }
-  | { type: "UPDATE_DURATION"; index: number; duration: number };
+  | { type: "UPDATE_DURATION"; index: number; duration: number }
+  | { type: "SET_GOOD"; index: number }
+  | { type: "SET_BAD"; index: number }
+  | { type: "CLEAR_RATING"; index: number };

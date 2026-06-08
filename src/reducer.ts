@@ -33,6 +33,27 @@ export function reducer(state: State, action: Action): State {
           i === action.index ? { ...t, duration: action.duration } : t
         ),
       };
+    case "SET_GOOD":
+      return {
+        ...state,
+        tracks: state.tracks.map((t, i) =>
+          i === action.index ? { ...t, good: !t.good, bad: false } : t
+        ),
+      };
+    case "SET_BAD":
+      return {
+        ...state,
+        tracks: state.tracks.map((t, i) =>
+          i === action.index ? { ...t, bad: !t.bad, good: false } : t
+        ),
+      };
+    case "CLEAR_RATING":
+      return {
+        ...state,
+        tracks: state.tracks.map((t, i) =>
+          i === action.index ? { ...t, good: false, bad: false } : t
+        ),
+      };
     default:
       return state;
   }

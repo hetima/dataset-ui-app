@@ -39,6 +39,8 @@ async function scanRecursive(dirPath: string, tracks: Track[]): Promise<void> {
         name: entry.name,
         duration: 0, // loadedmetadata イベントで後から更新
         size: info.size,
+        good: false,
+        bad: false,
       });
     }
   }
