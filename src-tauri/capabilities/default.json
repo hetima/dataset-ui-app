@@ -10,10 +10,13 @@
     "fs:allow-read-dir",
     "fs:allow-stat",
     "fs:allow-exists",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
     {
       "identifier": "fs:scope",
       "allow": [{ "path": "**" }]
     },
-    "store:default"
+    "store:default",
+    "core:window:allow-destroy"
   ]
 }

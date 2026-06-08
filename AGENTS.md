@@ -68,3 +68,33 @@ pnpm tauri build  # アプリパッケージング
 | `isRepeat` | 1曲リピートかどうか |
 | `autoPlay` | 選択変更時に即再生するか |
 | `searchQuery` | 検索文字列 |
+
+
+## mtdt.json
+フォルダごとに1個存在するメタデータを格納するjsonファイル
+```
+{
+  "audiofiles": [
+    {
+      "filename": "1.wav",
+      "transcript": "こんにちは",
+      "good": true,
+      "bad": false,
+      "caotion": "...",
+      "duration": 10
+    },
+    {
+      ...
+    }
+  ],
+  "other_property": {}
+}
+```
+という形式になっている。
+`filename`はフォルダに含まれる対応するファイル名。`transcript``good``bad``duration`を本アプリで扱う。上記のようにそれ以外の値も含まれる。保存時は他の値を消してしまわないように、必ず読み込み→マージ→保存の手順で行う。ただし、保存時点で存在しないファイルのレコードは削除する。goodとbadの値を作成・更新する。`transcript`の編集機能はないが、変更されるケースもある（後述）ので保存する。`duration`は保存時に空でなければ保存する。
+
+また、`ファイル名.txt` というファイルの存在も確認する。ファイルの内容を`transcript`として読み込む。これは`mtdt.json`にレコードが存在しなかった、あるいは空だったときのフォールバックである。`mtdt.json`が存在しない、あるいは"audiofiles"リストに存在しない場合`ファイル名.txt`の読み込みを試みる。`ファイル名.txt` から`transcript`を取得できた場合、保存時に`mtdt.json`の`transcript`を新規追加する。
+
+保存コマンドが実行されたときとフォルダが閉じられるときに`mtdt.json`を保存する。
+
+

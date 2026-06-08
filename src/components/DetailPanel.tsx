@@ -50,6 +50,12 @@ export function DetailPanel({ track, onSetGood, onSetBad }: Props) {
         <p className="text-xs text-muted-foreground">再生時間</p>
         <p>{formatDuration(track.duration)}</p>
       </div>
+      {track.transcript && (
+        <div>
+          <p className="text-xs text-muted-foreground">テキスト</p>
+          <p className="whitespace-pre-wrap break-all">{track.transcript}</p>
+        </div>
+      )}
     </div>
   );
 }

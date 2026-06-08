@@ -6,6 +6,7 @@ const SHORTCUTS = [
   { key: "Del / Backspace / H / C", desc: "Good・Bad をクリア" },
   { key: "L", desc: "再生モードを切り替え（連続 / 1曲 / 通常）" },
   { key: "Ctrl+F", desc: "検索フィールドにフォーカス（再度で解除）" },
+  { key: "Ctrl+S", desc: "mtdt.json を保存" },
   { key: "Esc", desc: "検索クリア / テーブルにフォーカス戻す" },
 ];
 

@@ -3,7 +3,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { AppSettings } from "./lib/settings";
 import { reducer, initialState } from "./reducer";
-import { scanFolder } from "./lib/audio";
+import { scanFolder, saveMtdt } from "./lib/audio";
 import { Header } from "./components/Header";
 import { AppSidebar } from "./components/AppSidebar";
 import { PlaylistTable } from "./components/PlaylistTable";
@@ -27,6 +27,9 @@ export default function App() {
   const [showDetailPanel, setShowDetailPanel] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentFolderRef = useRef<string | null>(null);
+  const tracksRef = useRef(state.tracks);
+  tracksRef.current = state.tracks;
 
   // 起動時に設定を復帰
   useEffect(() => {
@@ -47,8 +50,27 @@ export default function App() {
     await settings.setVolume(v);
   }, []);
 
+  // 現在のフォルダを mtdt.json に保存
+  const saveCurrentFolder = useCallback(async () => {
+    if (currentFolderRef.current && tracksRef.current.length > 0) {
+      await saveMtdt(currentFolderRef.current, tracksRef.current).catch((e) =>
+        console.error("saveMtdt failed:", e)
+      );
+    }
+  }, []);
+
+  // ウィンドウを閉じる前に保存
+  useEffect(() => {
+    const promise = appWindow.onCloseRequested(async () => {
+      await saveCurrentFolder();
+    });
+    return () => { promise.then((fn) => fn()); };
+  }, [saveCurrentFolder]);
+
   // フォルダをロードして recentFolders に追加
   const handleLoadFolder = useCallback(async (folder: string) => {
+    // フォルダ切り替え前に現在のフォルダを保存
+    await saveCurrentFolder();
     // 2秒後にローディングダイアログを表示
     loadingTimerRef.current = setTimeout(() => setIsLoading(true), 2000);
     let tracks: Awaited<ReturnType<typeof scanFolder>> = [];
@@ -59,11 +81,12 @@ export default function App() {
     }
     if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
     setIsLoading(false);
+    currentFolderRef.current = folder;
     dispatch({ type: "SET_TRACKS", tracks });
     const settings = await AppSettings.load();
     const updated = await settings.pushRecentFolder(folder);
     setRecentFolders(updated);
-  }, []);
+  }, [saveCurrentFolder]);
 
   // ライブラリにフォルダを追加（重複排除・名前順）
   const handleAddToLibrary = useCallback(async (folder: string) => {
@@ -191,6 +214,12 @@ export default function App() {
       t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
 
     const handler = (e: KeyboardEvent) => {
+      if (e.code === "KeyS" && e.ctrlKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        saveCurrentFolder();
+        return;
+      }
       if (e.code === "KeyF" && e.ctrlKey) {
         e.preventDefault();
         e.stopPropagation();
@@ -246,7 +275,7 @@ export default function App() {
     };
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
-  }, [state.isPlaying, state.currentIndex, state.tracks.length]);
+  }, [state.isPlaying, state.currentIndex, state.tracks.length, state.tracks, saveCurrentFolder]);
 
   const handlePlayPause = () => dispatch({ type: "SET_PLAYING", playing: !state.isPlaying });
   const handlePrev = () => {
@@ -266,7 +295,7 @@ export default function App() {
 
   const currentTrack = state.currentIndex !== null ? state.tracks[state.currentIndex] : null;
   const nowPlayingFolder = currentTrack
-    ? currentTrack.path.replace(/\\/g, "/").split("/").slice(0, -1).pop() ?? null
+    ? `${currentTrack.path.replace(/\\/g, "/").split("/").slice(0, -1).pop() ?? ""} (${state.tracks.length}項目)`
     : null;
 
   return (

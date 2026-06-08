@@ -214,7 +214,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
 
 // 秒数を mm:ss 形式に変換
 export function formatDuration(seconds: number): string {
-  if (!seconds || seconds === 0) return "--:--";
+  if (!seconds || seconds === 0) return "　";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;

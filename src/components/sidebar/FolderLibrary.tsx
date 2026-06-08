@@ -30,14 +30,13 @@ export function FolderLibrary({ folders, onLoad, onRemove }: Props) {
     <ul className="space-y-0.5">
       {folders.map((f) => (
         <ContextMenu key={f}>
-          <ContextMenuTrigger asChild>
-            <li
-              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm truncate"
-              onClick={() => onLoad(f)}
-            >
-              <FolderOpen className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate">{folderName(f)}</span>
-            </li>
+          <ContextMenuTrigger
+            className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm truncate w-full"
+            onClick={() => onLoad(f)}
+            render={<li />}
+          >
+            <FolderOpen className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate">{folderName(f)}</span>
           </ContextMenuTrigger>
           <ContextMenuContent>
             <ContextMenuItem

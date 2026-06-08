@@ -50,6 +50,13 @@ const columns = [
     cell: (info) => formatDuration(info.getValue()),
     size: 80,
   }),
+  columnHelper.accessor("transcript", {
+    header: "テキスト",
+    cell: (info) => {
+      const v = info.getValue();
+      return v ? <span className="truncate block max-w-sm text-muted-foreground">{v}</span> : null;
+    },
+  }),
 ];
 
 export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function PlaylistTable({
@@ -107,7 +114,7 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
               <TableRow
                 key={row.id}
                 data-index={originalIndex}
-                className={`cursor-pointer ${isCurrent ? "bg-primary/20 font-semibold" : ""} ${row.original.bad ? "text-red-700" : ""}`}
+                className={`cursor-pointer ${isCurrent ? "bg-primary/20" : ""} ${row.original.bad ? "text-red-700" : ""}`}
                 onClick={() => onSelect(originalIndex)}
               >
                 {row.getVisibleCells().map((cell) => (

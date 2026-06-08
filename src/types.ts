@@ -5,6 +5,7 @@ export type Track = {
   size: number;     // バイト
   good: boolean;
   bad: boolean;
+  transcript: string;
 };
 
 export type PlayMode = "stop" | "continuous" | "repeat";
