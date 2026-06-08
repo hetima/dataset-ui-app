@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "voice-preview-app",
-        "width": 1280,
-        "height": 900
+        "width": 1200,
+        "height": 800
       }
     ],
     "security": {
