@@ -1,10 +1,11 @@
 import { RefObject } from "react";
 import { Slider } from "@/components/ui/slider";
+import { Button } from "@/components/ui/button";
 import { AudioControls } from "./AudioControls";
 import { SearchField } from "./SearchField";
 import { formatDuration } from "@/lib/audio";
 import { PlayMode } from "@/types";
-import { Volume2 } from "lucide-react";
+import { Volume2, PanelLeft } from "lucide-react";
 
 type Props = {
   searchRef: RefObject<HTMLInputElement | null>;
@@ -23,6 +24,7 @@ type Props = {
   onSearchChange: (query: string) => void;
   onSearchEscapeToTable: () => void;
   onVolumeChange: (v: number) => void;
+  onToggleSidebar: () => void;
 };
 
 export function Header(props: Props) {
@@ -54,8 +56,11 @@ export function Header(props: Props) {
           />
         </div>
       </div>
-      {/* 2段目: シークバー + 検索 */}
+      {/* 2段目: サイドバートリガー + シークバー + 検索 */}
       <div className="flex items-center gap-2 px-1">
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={props.onToggleSidebar}>
+          <PanelLeft className="w-4 h-4" />
+        </Button>
         <span className="text-xs text-muted-foreground w-10 text-right shrink-0">
           {hasTrack ? formatDuration(props.currentTime) : "　"}
         </span>
