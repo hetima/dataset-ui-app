@@ -82,7 +82,7 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
 
   return (
     <div ref={ref} tabIndex={-1} className="flex-1 overflow-auto outline-none">
-      <Table>
+      <Table className="text-sm">
         <TableHeader>
           {table.getHeaderGroups().map((hg) => (
             <TableRow key={hg.id}>

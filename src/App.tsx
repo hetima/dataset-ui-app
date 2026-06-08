@@ -24,6 +24,7 @@ export default function App() {
   const [folderLibrary, setFolderLibrary] = useState<string[]>([]);
   const [recentFolders, setRecentFolders] = useState<string[]>([]);
   const [sidebarMode, setSidebarMode] = useState<"icon" | "open">("icon");
+  const [showDetailPanel, setShowDetailPanel] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -264,6 +265,9 @@ export default function App() {
   };
 
   const currentTrack = state.currentIndex !== null ? state.tracks[state.currentIndex] : null;
+  const nowPlayingFolder = currentTrack
+    ? currentTrack.path.replace(/\\/g, "/").split("/").slice(0, -1).pop() ?? null
+    : null;
 
   return (
     <div className="flex flex-col h-screen">
@@ -281,6 +285,7 @@ export default function App() {
         currentTime={currentTime}
         duration={currentTrack?.duration ?? 0}
         nowPlayingName={currentTrack?.name ?? null}
+        nowPlayingFolder={nowPlayingFolder}
         searchQuery={state.searchQuery}
         onPlayPause={handlePlayPause}
         onPrev={handlePrev}
@@ -293,6 +298,7 @@ export default function App() {
         volume={volume}
         onVolumeChange={handleVolumeChange}
         onToggleSidebar={() => setSidebarMode((m) => m === "icon" ? "open" : "icon")}
+        onToggleDetailPanel={() => setShowDetailPanel((v) => !v)}
       />
       <div className="flex flex-1 overflow-hidden">
         <AppSidebar
@@ -314,11 +320,16 @@ export default function App() {
           ref={tableRef}
           onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
         />
-        <DetailPanel
-          track={currentTrack}
-          onSetGood={() => state.currentIndex !== null && dispatch({ type: "SET_GOOD", index: state.currentIndex })}
-          onSetBad={() => state.currentIndex !== null && dispatch({ type: "SET_BAD", index: state.currentIndex })}
-        />
+        <div
+          className="shrink-0 overflow-hidden transition-all duration-200 border-l"
+          style={{ width: showDetailPanel ? "16rem" : "0" }}
+        >
+          <DetailPanel
+            track={currentTrack}
+            onSetGood={() => state.currentIndex !== null && dispatch({ type: "SET_GOOD", index: state.currentIndex })}
+            onSetBad={() => state.currentIndex !== null && dispatch({ type: "SET_BAD", index: state.currentIndex })}
+          />
+        </div>
       </div>
       <audio
         ref={audioRef}

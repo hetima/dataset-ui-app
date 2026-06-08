@@ -12,14 +12,14 @@ type Props = {
 export function DetailPanel({ track, onSetGood, onSetBad }: Props) {
   if (!track) {
     return (
-      <div className="w-64 shrink-0 border-l p-4 text-sm text-muted-foreground">
+      <div className="w-64 shrink-0 p-4 text-sm text-muted-foreground">
         ファイルを選択してください
       </div>
     );
   }
 
   return (
-    <div className="w-64 shrink-0 border-l p-4 text-sm space-y-3">
+    <div className="w-64 shrink-0 p-4 text-sm space-y-3">
       <div className="flex gap-2">
         <Button
           variant={track.good ? "default" : "ghost"}
