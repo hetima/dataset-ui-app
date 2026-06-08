@@ -24,6 +24,7 @@ export type Action =
   | { type: "SET_CURRENT"; index: number | null }
   | { type: "SET_PLAYING"; playing: boolean }
   | { type: "CYCLE_PLAY_MODE" }
+  | { type: "SET_PLAY_MODE"; mode: PlayMode }
   | { type: "SET_SEARCH"; query: string }
   | { type: "UPDATE_DURATION"; index: number; duration: number }
   | { type: "SET_GOOD"; index: number }

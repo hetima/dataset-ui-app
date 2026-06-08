@@ -24,10 +24,16 @@ type Props = {
   folderLibrary: string[];
   recentFolders: string[];
   mode: SidebarMode;
+  goodFolderName: string;
+  badFolderName: string;
   onModeChange: (mode: SidebarMode) => void;
   onLoadFolder: (folder: string) => void;
   onRemoveLibrary: (folder: string) => void;
   onSelect: (index: number) => void;
+  onMoveGood: () => void;
+  onMoveBad: () => void;
+  onGoodFolderNameChange: (name: string) => void;
+  onBadFolderNameChange: (name: string) => void;
 };
 
 export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar({
@@ -36,10 +42,16 @@ export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar(
   folderLibrary,
   recentFolders,
   mode,
+  goodFolderName,
+  badFolderName,
   onModeChange,
   onLoadFolder,
   onRemoveLibrary,
   onSelect,
+  onMoveGood,
+  onMoveBad,
+  onGoodFolderNameChange,
+  onBadFolderNameChange,
 }: Props, ref: React.ForwardedRef<HTMLDivElement>) {
   const [activeTab, setActiveTab] = useState<TabId>("library");
   const isOpen = mode === "open";
@@ -98,7 +110,9 @@ export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar(
               tracks={goodTracks}
               currentIndex={currentIndex}
               allTracks={tracks}
+              subFolderName={goodFolderName}
               onSelect={onSelect}
+              onMove={onMoveGood}
             />
           )}
           {activeTab === "bad" && (
@@ -106,10 +120,19 @@ export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar(
               tracks={badTracks}
               currentIndex={currentIndex}
               allTracks={tracks}
+              subFolderName={badFolderName}
               onSelect={onSelect}
+              onMove={onMoveBad}
             />
           )}
-          {activeTab === "settings" && <SettingsTab />}
+          {activeTab === "settings" && (
+            <SettingsTab
+              goodFolderName={goodFolderName}
+              badFolderName={badFolderName}
+              onGoodFolderNameChange={onGoodFolderNameChange}
+              onBadFolderNameChange={onBadFolderNameChange}
+            />
+          )}
         </div>
       )}
     </div>

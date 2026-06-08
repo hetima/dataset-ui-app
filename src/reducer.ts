@@ -24,6 +24,8 @@ export function reducer(state: State, action: Action): State {
       const next = PLAY_MODE_CYCLE[(PLAY_MODE_CYCLE.indexOf(state.playMode) + 1) % PLAY_MODE_CYCLE.length];
       return { ...state, playMode: next };
     }
+    case "SET_PLAY_MODE":
+      return { ...state, playMode: action.mode };
     case "SET_SEARCH":
       return { ...state, searchQuery: action.query };
     case "UPDATE_DURATION":

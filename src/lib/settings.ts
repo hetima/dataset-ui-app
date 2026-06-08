@@ -9,7 +9,7 @@ export class AppSettings {
 
   static async load(): Promise<AppSettings> {
     const store = await load(STORE_PATH, {
-      defaults: { volume: 1, folderLibrary: [], recentFolders: [] },
+      defaults: { volume: 1, folderLibrary: [], recentFolders: [], goodFolderName: "good", badFolderName: "bad", playMode: "stop" },
       autoSave: false,
     });
     return new AppSettings(store);
@@ -35,6 +35,33 @@ export class AppSettings {
 
   async getRecentFolders(): Promise<string[]> {
     return (await this.store.get<string[]>("recentFolders")) ?? [];
+  }
+
+  async getPlayMode(): Promise<string> {
+    return (await this.store.get<string>("playMode")) ?? "stop";
+  }
+
+  async setPlayMode(mode: string): Promise<void> {
+    await this.store.set("playMode", mode);
+    await this.store.save();
+  }
+
+  async getGoodFolderName(): Promise<string> {
+    return (await this.store.get<string>("goodFolderName")) ?? "good";
+  }
+
+  async setGoodFolderName(name: string): Promise<void> {
+    await this.store.set("goodFolderName", name);
+    await this.store.save();
+  }
+
+  async getBadFolderName(): Promise<string> {
+    return (await this.store.get<string>("badFolderName")) ?? "bad";
+  }
+
+  async setBadFolderName(name: string): Promise<void> {
+    await this.store.set("badFolderName", name);
+    await this.store.save();
   }
 
   /** 先頭に追加し上限16件を超えたら末尾を削除 */

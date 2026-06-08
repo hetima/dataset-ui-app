@@ -3,7 +3,8 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { AppSettings } from "./lib/settings";
 import { reducer, initialState } from "./reducer";
-import { scanFolder, saveMtdt } from "./lib/audio";
+import { PlayMode } from "./types";
+import { scanFolder, saveMtdt, moveRatedFiles } from "./lib/audio";
 import { Header } from "./components/Header";
 import { AppSidebar } from "./components/AppSidebar";
 import { PlaylistTable } from "./components/PlaylistTable";
@@ -23,9 +24,12 @@ export default function App() {
   const [volume, setVolume] = useState(1);
   const [folderLibrary, setFolderLibrary] = useState<string[]>([]);
   const [recentFolders, setRecentFolders] = useState<string[]>([]);
+  const [goodFolderName, setGoodFolderName] = useState("good");
+  const [badFolderName, setBadFolderName] = useState("bad");
   const [sidebarMode, setSidebarMode] = useState<"icon" | "open">("icon");
   const [showDetailPanel, setShowDetailPanel] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentFolderRef = useRef<string | null>(null);
   const tracksRef = useRef(state.tracks);
@@ -39,6 +43,10 @@ export default function App() {
       if (audioRef.current) audioRef.current.volume = v;
       setFolderLibrary(await settings.getFolderLibrary());
       setRecentFolders(await settings.getRecentFolders());
+      setGoodFolderName(await settings.getGoodFolderName());
+      setBadFolderName(await settings.getBadFolderName());
+      const savedPlayMode = await settings.getPlayMode();
+      dispatch({ type: "SET_PLAY_MODE", mode: savedPlayMode as PlayMode });
     });
   }, []);
 
@@ -58,6 +66,46 @@ export default function App() {
       );
     }
   }, []);
+
+  // good/bad フォルダ名の変更を保存
+  const handleGoodFolderNameChange = useCallback(async (name: string) => {
+    setGoodFolderName(name);
+    const settings = await AppSettings.load();
+    await settings.setGoodFolderName(name);
+  }, []);
+
+  const handleBadFolderNameChange = useCallback(async (name: string) => {
+    setBadFolderName(name);
+    const settings = await AppSettings.load();
+    await settings.setBadFolderName(name);
+  }, []);
+
+  // playMode 変化時に設定保存（初回マウント時はスキップ）
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    AppSettings.load().then((s) => s.setPlayMode(state.playMode));
+  }, [state.playMode]);
+
+  // good/bad ファイルをサブフォルダに移動してリロード
+  const handleMoveRated = useCallback(async (rating: "good" | "bad") => {
+    const folder = currentFolderRef.current;
+    if (!folder) return;
+    const subFolderName = rating === "good" ? goodFolderName : badFolderName;
+    setIsMoving(true);
+    try {
+      const result = await moveRatedFiles(folder, tracksRef.current, rating, subFolderName);
+      if (!result.ok) {
+        alert(`以下のファイルが移動先に既に存在します:\n${result.conflicts.join("\n")}`);
+        return;
+      }
+      if (result.reloadedTracks) {
+        dispatch({ type: "SET_TRACKS", tracks: result.reloadedTracks });
+      }
+    } finally {
+      setIsMoving(false);
+    }
+  }, [goodFolderName, badFolderName]);
 
   // ウィンドウを閉じる前に保存
   useEffect(() => {
@@ -308,6 +356,14 @@ export default function App() {
           </DialogHeader>
         </DialogContent>
       </Dialog>
+      <Dialog open={isMoving} onOpenChange={() => {}}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>移動中</DialogTitle>
+            <DialogDescription>ファイルを移動しています...</DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
       <Header
         isPlaying={state.isPlaying}
         playMode={state.playMode}
@@ -337,10 +393,16 @@ export default function App() {
           folderLibrary={folderLibrary}
           recentFolders={recentFolders}
           mode={sidebarMode}
+          goodFolderName={goodFolderName}
+          badFolderName={badFolderName}
           onModeChange={setSidebarMode}
           onLoadFolder={handleLoadFolder}
           onRemoveLibrary={handleRemoveLibrary}
           onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
+          onMoveGood={() => handleMoveRated("good")}
+          onMoveBad={() => handleMoveRated("bad")}
+          onGoodFolderNameChange={handleGoodFolderNameChange}
+          onBadFolderNameChange={handleBadFolderNameChange}
         />
         <PlaylistTable
           tracks={state.tracks}
