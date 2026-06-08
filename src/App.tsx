@@ -33,7 +33,22 @@ export default function App() {
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentFolderRef = useRef<string | null>(null);
   const tracksRef = useRef(state.tracks);
+  const visibleTrackIndicesRef = useRef<number[]>([]);
   tracksRef.current = state.tracks;
+
+  const getAdjacentVisibleIndex = useCallback((currentIndex: number | null, direction: -1 | 1) => {
+    const visibleIndices = visibleTrackIndicesRef.current;
+    if (visibleIndices.length === 0) return null;
+    if (currentIndex === null) return direction > 0 ? visibleIndices[0] : visibleIndices[visibleIndices.length - 1];
+    const position = visibleIndices.indexOf(currentIndex);
+    if (position < 0) return direction > 0 ? visibleIndices[0] : visibleIndices[visibleIndices.length - 1];
+    const nextPosition = Math.max(0, Math.min(visibleIndices.length - 1, position + direction));
+    return visibleIndices[nextPosition];
+  }, []);
+
+  const handleVisibleIndicesChange = useCallback((indices: number[]) => {
+    visibleTrackIndicesRef.current = indices;
+  }, []);
 
   // 起動時に設定を復帰
   useEffect(() => {
@@ -188,14 +203,14 @@ export default function App() {
       return;
     }
     if (state.playMode === "continuous") {
-      const next = state.currentIndex !== null ? state.currentIndex + 1 : null;
-      if (next !== null && next < state.tracks.length) {
+      const next = getAdjacentVisibleIndex(state.currentIndex, 1);
+      if (next !== null && next !== state.currentIndex) {
         dispatch({ type: "SET_CURRENT", index: next });
         return;
       }
     }
     dispatch({ type: "SET_PLAYING", playing: false });
-  }, [state.playMode, state.currentIndex, state.tracks.length]);
+  }, [getAdjacentVisibleIndex, state.playMode, state.currentIndex]);
 
   // loadedmetadata で duration を取得して state を更新
   const handleLoadedMetadata = useCallback(() => {
@@ -287,15 +302,13 @@ export default function App() {
       if (e.code === "ArrowUp") {
         e.preventDefault();
         e.stopPropagation();
-        const next = state.currentIndex !== null ? Math.max(0, state.currentIndex - 1) : 0;
+        const next = getAdjacentVisibleIndex(state.currentIndex, -1);
         dispatch({ type: "SET_CURRENT", index: next });
       }
       if (e.code === "ArrowDown") {
         e.preventDefault();
         e.stopPropagation();
-        const next = state.currentIndex !== null
-          ? Math.min(state.tracks.length - 1, state.currentIndex + 1)
-          : 0;
+        const next = getAdjacentVisibleIndex(state.currentIndex, 1);
         dispatch({ type: "SET_CURRENT", index: next });
       }
       if ((e.code === "KeyF" || e.code === "KeyG") && !e.ctrlKey && state.currentIndex !== null) {
@@ -323,18 +336,14 @@ export default function App() {
     };
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
-  }, [state.isPlaying, state.currentIndex, state.tracks.length, state.tracks, saveCurrentFolder]);
+  }, [getAdjacentVisibleIndex, state.isPlaying, state.currentIndex, saveCurrentFolder]);
 
   const handlePlayPause = () => dispatch({ type: "SET_PLAYING", playing: !state.isPlaying });
   const handlePrev = () => {
-    if (state.currentIndex !== null && state.currentIndex > 0) {
-      dispatch({ type: "SET_CURRENT", index: state.currentIndex - 1 });
-    }
+    dispatch({ type: "SET_CURRENT", index: getAdjacentVisibleIndex(state.currentIndex, -1) });
   };
   const handleNext = () => {
-    if (state.currentIndex !== null && state.currentIndex < state.tracks.length - 1) {
-      dispatch({ type: "SET_CURRENT", index: state.currentIndex + 1 });
-    }
+    dispatch({ type: "SET_CURRENT", index: getAdjacentVisibleIndex(state.currentIndex, 1) });
   };
   const handleSeek = (time: number) => {
     if (audioRef.current) audioRef.current.currentTime = time;
@@ -410,6 +419,7 @@ export default function App() {
           searchQuery={state.searchQuery}
           ref={tableRef}
           onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
+          onVisibleIndicesChange={handleVisibleIndicesChange}
         />
         <div
           className="shrink-0 overflow-hidden transition-all duration-200 border-l"
