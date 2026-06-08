@@ -1,0 +1,25 @@
+export type Track = {
+  path: string;
+  name: string;
+  duration: number; // 秒
+  size: number;     // バイト
+};
+
+export type PlayMode = "stop" | "continuous" | "repeat";
+
+export type State = {
+  tracks: Track[];
+  currentIndex: number | null;
+  isPlaying: boolean;
+  playMode: PlayMode;
+  searchQuery: string;
+};
+
+export type Action =
+  | { type: "SET_TRACKS"; tracks: Track[] }
+  | { type: "APPEND_TRACKS"; tracks: Track[] }
+  | { type: "SET_CURRENT"; index: number | null }
+  | { type: "SET_PLAYING"; playing: boolean }
+  | { type: "CYCLE_PLAY_MODE" }
+  | { type: "SET_SEARCH"; query: string }
+  | { type: "UPDATE_DURATION"; index: number; duration: number };

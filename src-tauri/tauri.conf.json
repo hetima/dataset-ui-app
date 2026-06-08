@@ -13,12 +13,16 @@
     "windows": [
       {
         "title": "voice-preview-app",
-        "width": 800,
-        "height": 600
+        "width": 1000,
+        "height": 800
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
     }
   },
   "bundle": {
