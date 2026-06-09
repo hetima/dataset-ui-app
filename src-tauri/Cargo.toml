@@ -1,5 +1,5 @@
 [package]
-name = "voice-preview-app"
+name = "dataset-ui-app"
 version = "0.1.0"
 description = "Audio Player"
 authors = []

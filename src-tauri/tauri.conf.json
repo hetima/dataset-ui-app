@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "voice-preview-app",
+  "productName": "dataset-ui-app",
   "version": "0.1.0",
-  "identifier": "com.voice-preview.app",
+  "identifier": "com.dataset-ui.app",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "voice-preview-app",
+        "title": "dataset-ui-app",
         "width": 1200,
         "height": 800
       }

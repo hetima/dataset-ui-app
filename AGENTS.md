@@ -1,4 +1,4 @@
-# voice-preview-app
+# dataset-ui-app
 
 Tauri v2 + React 19 + TypeScript 製のデスクトップオーディオプレイヤー。
 
