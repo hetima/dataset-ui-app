@@ -376,8 +376,8 @@ export default function App() {
   };
 
   const currentTrack = state.currentIndex !== null ? state.tracks[state.currentIndex] : null;
-  const nowPlayingFolder = currentTrack
-    ? `${currentTrack.path.replace(/\\/g, "/").split("/").slice(0, -1).pop() ?? ""} (${state.tracks.length}項目)`
+  const nowPlayingFolder = currentFolderRef.current && state.tracks.length > 0
+    ? `${currentFolderRef.current.replace(/\\/g, "/").split("/").pop() ?? ""} (${state.tracks.length}項目)`
     : null;
 
   // 詳細パネル用のファイルサイズは選択時に取得する

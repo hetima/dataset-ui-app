@@ -110,6 +110,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
   // mtdt.json を読み込んでメタデータを反映
   const { map: mtdtMap } = await loadMtdt(folderPath);
 
+  const transcriptFallbackTargets: Track[] = [];
   for (const track of tracks) {
     const rec = mtdtMap.get(track.name);
     if (rec) {
@@ -119,8 +120,14 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       track.transcript = rec.transcript ?? "";
     }
 
-    // transcript が空なら .txt フォールバック
     if (!track.transcript) {
+      transcriptFallbackTargets.push(track);
+    }
+  }
+
+  // transcript が空なら .txt フォールバックを並列で読む
+  await Promise.all(
+    transcriptFallbackTargets.map(async (track) => {
       try {
         const baseName = track.name.replace(/\.[^.]+$/, "");
         const txtPath = await join(folderPath, baseName + ".txt");
@@ -128,8 +135,8 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       } catch {
         // ファイルが存在しない場合は無視
       }
-    }
-  }
+    })
+  );
 
   return tracks;
 }
