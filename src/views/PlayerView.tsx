@@ -14,7 +14,7 @@ import "../App.css";
 
 const appWindow = getCurrentWebviewWindow();
 
-export function VoiceView() {
+export function PlayerView() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const audioRef = useRef<HTMLAudioElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -55,16 +55,16 @@ export function VoiceView() {
 
   // 起動時に設定を復帰
   useEffect(() => {
-    AppSettings.load().then(async (settings) => {
-      const v = await settings.getVolume();
+    AppSettings.load().then(async ({ playerView }) => {
+      const v = await playerView.getVolume();
       setVolume(v);
       if (audioRef.current) audioRef.current.volume = v;
-      setFolderLibrary(await settings.getFolderLibrary());
-      setRecentFolders(await settings.getRecentFolders());
-      setGoodFolderName(await settings.getGoodFolderName());
-      setBadFolderName(await settings.getBadFolderName());
-      setSyncToggle(await settings.getSyncToggle());
-      const savedPlayMode = await settings.getPlayMode();
+      setFolderLibrary(await playerView.getFolderLibrary());
+      setRecentFolders(await playerView.getRecentFolders());
+      setGoodFolderName(await playerView.getGoodFolderName());
+      setBadFolderName(await playerView.getBadFolderName());
+      setSyncToggle(await playerView.getSyncToggle());
+      const savedPlayMode = await playerView.getPlayMode();
       dispatch({ type: "SET_PLAY_MODE", mode: savedPlayMode as PlayMode });
       settingsLoadedRef.current = true;
     });
@@ -75,7 +75,7 @@ export function VoiceView() {
     setVolume(v);
     if (audioRef.current) audioRef.current.volume = v;
     const settings = await AppSettings.load();
-    await settings.setVolume(v);
+    await settings.playerView.setVolume(v);
   }, []);
 
   // 現在のフォルダを mtdt.json に保存
@@ -91,26 +91,26 @@ export function VoiceView() {
   const handleGoodFolderNameChange = useCallback(async (name: string) => {
     setGoodFolderName(name);
     const settings = await AppSettings.load();
-    await settings.setGoodFolderName(name);
+    await settings.playerView.setGoodFolderName(name);
   }, []);
 
   const handleBadFolderNameChange = useCallback(async (name: string) => {
     setBadFolderName(name);
     const settings = await AppSettings.load();
-    await settings.setBadFolderName(name);
+    await settings.playerView.setBadFolderName(name);
   }, []);
 
   const handleSyncToggleChange = useCallback(async (v: boolean) => {
     setSyncToggle(v);
     const settings = await AppSettings.load();
-    await settings.setSyncToggle(v);
+    await settings.playerView.setSyncToggle(v);
   }, []);
 
   // playMode 変化時に設定保存（設定ロード完了後のみ）
   const settingsLoadedRef = useRef(false);
   useEffect(() => {
     if (!settingsLoadedRef.current) return;
-    AppSettings.load().then((s) => s.setPlayMode(state.playMode));
+    AppSettings.load().then((s) => s.playerView.setPlayMode(state.playMode));
   }, [state.playMode]);
 
   // good/bad ファイルをサブフォルダに移動してリロード
@@ -158,7 +158,7 @@ export function VoiceView() {
     currentFolderRef.current = folder;
     dispatch({ type: "SET_TRACKS", tracks });
     const settings = await AppSettings.load();
-    const updated = await settings.pushRecentFolder(folder);
+    const updated = await settings.playerView.pushRecentFolder(folder);
     setRecentFolders(updated);
   }, [saveCurrentFolder]);
 
@@ -169,7 +169,7 @@ export function VoiceView() {
       const updated = [...prev, folder].sort((a, b) =>
         a.replace(/\\/g, "/").split("/").pop()!.localeCompare(b.replace(/\\/g, "/").split("/").pop()!)
       );
-      AppSettings.load().then((s) => s.setFolderLibrary(updated));
+      AppSettings.load().then((s) => s.playerView.setFolderLibrary(updated));
       return updated;
     });
   }, []);
@@ -178,7 +178,7 @@ export function VoiceView() {
   const handleRemoveLibrary = useCallback(async (folder: string) => {
     setFolderLibrary((prev) => {
       const updated = prev.filter((f) => f !== folder);
-      AppSettings.load().then((s) => s.setFolderLibrary(updated));
+      AppSettings.load().then((s) => s.playerView.setFolderLibrary(updated));
       return updated;
     });
   }, []);
@@ -269,7 +269,7 @@ export function VoiceView() {
       // 履歴に追加
       const settings = await AppSettings.load();
       for (const p of paths) {
-        const updated = await settings.pushRecentFolder(p);
+        const updated = await settings.playerView.pushRecentFolder(p);
         setRecentFolders(updated);
       }
 

@@ -1,5 +1,5 @@
-import { VoiceView } from "./views/VoiceView";
+import { PlayerView } from "./views/PlayerView";
 
 export default function App() {
-  return <VoiceView />;
+  return <PlayerView />;
 }
