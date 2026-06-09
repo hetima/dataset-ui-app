@@ -1,8 +1,14 @@
 import { load, Store } from "@tauri-apps/plugin-store";
 import { isAppLanguage, type AppLanguage } from "./i18n";
+import { isAppTheme, type AppTheme } from "./theme";
 
 const STORE_PATH = "settings.json";
 const RECENT_FOLDERS_LIMIT = 16;
+
+const APP_KEYS = {
+  language: "app.language",
+  theme: "app.theme",
+} as const;
 
 const PLAYER_VIEW_KEYS = {
   volume: "playerview.volume",
@@ -13,14 +19,13 @@ const PLAYER_VIEW_KEYS = {
   playMode: "playerview.playMode",
   syncToggle: "playerview.syncToggle",
   sidebarWidth: "playerview.sidebarWidth",
-  language: "playerview.language",
 } as const;
 
 /** アプリ設定の読み書きを担当するクラス */
 export class AppSettings {
   readonly playerView: PlayerViewSettings;
 
-  private constructor(store: Store) {
+  private constructor(private store: Store) {
     this.playerView = new PlayerViewSettings(store);
   }
 
@@ -35,11 +40,32 @@ export class AppSettings {
         [PLAYER_VIEW_KEYS.playMode]: "stop",
         [PLAYER_VIEW_KEYS.syncToggle]: false,
         [PLAYER_VIEW_KEYS.sidebarWidth]: 0,
-        [PLAYER_VIEW_KEYS.language]: "ja",
+        [APP_KEYS.language]: "ja",
+        [APP_KEYS.theme]: "system",
       },
       autoSave: false,
     });
     return new AppSettings(store);
+  }
+
+  async getLanguage(): Promise<AppLanguage> {
+    const language = await this.store.get<string>(APP_KEYS.language);
+    return language && isAppLanguage(language) ? language : "ja";
+  }
+
+  async setLanguage(language: AppLanguage): Promise<void> {
+    await this.store.set(APP_KEYS.language, language);
+    await this.store.save();
+  }
+
+  async getTheme(): Promise<AppTheme> {
+    const theme = await this.store.get<string>(APP_KEYS.theme);
+    return theme && isAppTheme(theme) ? theme : "system";
+  }
+
+  async setTheme(theme: AppTheme): Promise<void> {
+    await this.store.set(APP_KEYS.theme, theme);
+    await this.store.save();
   }
 }
 
@@ -93,16 +119,6 @@ export class PlayerViewSettings {
 
   async setSidebarWidth(width: number): Promise<void> {
     await this.store.set(PLAYER_VIEW_KEYS.sidebarWidth, width);
-    await this.store.save();
-  }
-
-  async getLanguage(): Promise<AppLanguage> {
-    const language = await this.store.get<string>(PLAYER_VIEW_KEYS.language);
-    return language && isAppLanguage(language) ? language : "ja";
-  }
-
-  async setLanguage(language: AppLanguage): Promise<void> {
-    await this.store.set(PLAYER_VIEW_KEYS.language, language);
     await this.store.save();
   }
 

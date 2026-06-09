@@ -1,11 +1,13 @@
 import { useReducer, useRef, useEffect, useCallback, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "next-themes";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { AppSettings } from "../lib/settings";
 import type { AppLanguage } from "../lib/i18n";
+import type { AppTheme } from "../lib/theme";
 import { reducer, initialState } from "../reducer";
 import { PlayMode } from "../types";
 import { scanFolder, saveMtdt, moveRatedFiles, getFileSize } from "../lib/audio";
@@ -26,6 +28,7 @@ type ContentTab = "player" | "settings";
 
 export function PlayerView() {
   const { t, i18n } = useTranslation();
+  const { setTheme: setAppTheme } = useTheme();
   const [state, dispatch] = useReducer(reducer, initialState);
   const audioRef = useRef<HTMLAudioElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -43,6 +46,7 @@ export function PlayerView() {
   const [showDetailPanel, setShowDetailPanel] = useState(true);
   const [activeContentTab, setActiveContentTab] = useState<ContentTab>("player");
   const [language, setLanguage] = useState<AppLanguage>("ja");
+  const [theme, setTheme] = useState<AppTheme>("system");
   const [isLoading, setIsLoading] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,7 +96,8 @@ export function PlayerView() {
 
   // 起動時に設定を復帰
   useEffect(() => {
-    AppSettings.load().then(async ({ playerView }) => {
+    AppSettings.load().then(async (settings) => {
+      const { playerView } = settings;
       const v = await playerView.getVolume();
       setVolume(v);
       if (audioRef.current) audioRef.current.volume = v;
@@ -100,9 +105,12 @@ export function PlayerView() {
       setRecentFolders(await playerView.getRecentFolders());
       setGoodFolderName(await playerView.getGoodFolderName());
       setBadFolderName(await playerView.getBadFolderName());
-      const loadedLanguage = await playerView.getLanguage();
+      const loadedLanguage = await settings.getLanguage();
       setLanguage(loadedLanguage);
       await i18n.changeLanguage(loadedLanguage);
+      const loadedTheme = await settings.getTheme();
+      setTheme(loadedTheme);
+      setAppTheme(loadedTheme);
       setSyncToggle(await playerView.getSyncToggle());
       const savedSidebarWidth = await playerView.getSidebarWidth();
       if (savedSidebarWidth > 0) {
@@ -115,7 +123,7 @@ export function PlayerView() {
       dispatch({ type: "SET_PLAY_MODE", mode: savedPlayMode as PlayMode });
       settingsLoadedRef.current = true;
     });
-  }, [i18n]);
+  }, [i18n, setAppTheme]);
 
   // ボリューム変更を audio に反映し store に保存
   const handleVolumeChange = useCallback(async (v: number) => {
@@ -159,8 +167,15 @@ export function PlayerView() {
     setLanguage(nextLanguage);
     await i18n.changeLanguage(nextLanguage);
     const settings = await AppSettings.load();
-    await settings.playerView.setLanguage(nextLanguage);
+    await settings.setLanguage(nextLanguage);
   }, [i18n]);
+
+  const handleThemeChange = useCallback(async (nextTheme: AppTheme) => {
+    setTheme(nextTheme);
+    setAppTheme(nextTheme);
+    const settings = await AppSettings.load();
+    await settings.setTheme(nextTheme);
+  }, [setAppTheme]);
 
   // playMode 変化時に設定保存（設定ロード完了後のみ）
   const settingsLoadedRef = useRef(false);
@@ -578,10 +593,12 @@ export function PlayerView() {
             badFolderName={badFolderName}
             syncToggle={syncToggle}
             language={language}
+            theme={theme}
             onGoodFolderNameChange={handleGoodFolderNameChange}
             onBadFolderNameChange={handleBadFolderNameChange}
             onSyncToggleChange={handleSyncToggleChange}
             onLanguageChange={handleLanguageChange}
+            onThemeChange={handleThemeChange}
           />
         </TabsContent>
       </Tabs>

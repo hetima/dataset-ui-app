@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Field, FieldDescription, FieldGroup, FieldLegend, FieldSet, FieldTitle } from "@/components/ui/field";
 import type { AppLanguage } from "@/lib/i18n";
+import type { AppTheme } from "@/lib/theme";
 
 type Section = "general" | "player";
 
@@ -26,13 +27,15 @@ type Props = {
   badFolderName: string;
   syncToggle: boolean;
   language: AppLanguage;
+  theme: AppTheme;
   onGoodFolderNameChange: (name: string) => void;
   onBadFolderNameChange: (name: string) => void;
   onSyncToggleChange: (v: boolean) => void;
   onLanguageChange: (language: AppLanguage) => void;
+  onThemeChange: (theme: AppTheme) => void;
 };
 
-export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange }: Props) {
+export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange }: Props) {
   const { t } = useTranslation();
   const [section, setSection] = useState<Section>("general");
 
@@ -77,6 +80,24 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
                 >
                   {t("settings.english")}
                 </Button>
+              </div>
+            </Field>
+            <Field orientation="horizontal">
+              <div className="flex-1">
+                <FieldTitle>{t("settings.theme")}</FieldTitle>
+                <FieldDescription>{t("settings.themeDescription")}</FieldDescription>
+              </div>
+              <div className="flex gap-1">
+                {(["light", "dark", "system"] as AppTheme[]).map((value) => (
+                  <Button
+                    key={value}
+                    variant={theme === value ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => onThemeChange(value)}
+                  >
+                    {t(`settings.${value}`)}
+                  </Button>
+                ))}
               </div>
             </Field>
           </FieldGroup>
