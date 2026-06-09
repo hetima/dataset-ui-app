@@ -1,5 +1,6 @@
 import { readDir, stat, readTextFile, writeTextFile, rename, mkdir, exists } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
 import { Track } from "../types";
 
 // mtdt.json の1レコード型（既知フィールドのみ）
@@ -16,6 +17,7 @@ type MtdtRecord = {
 type SongRecord = {
   filename?: string;
   lyrics?: string;
+  draft_lyrics?: string;
   synced_lyrics?: string;
   ttml?: string;
   title?: string;
@@ -129,6 +131,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       bad: false,
       transcript: "",
       lyrics: "",
+      draftLyrics: "",
       syncedLyrics: "",
       ttml: "",
       title: "",
@@ -155,6 +158,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
     const song = songsMap.get(track.name);
     if (song) {
       track.lyrics = song.lyrics ?? "";
+      track.draftLyrics = song.draft_lyrics ?? "";
       track.syncedLyrics = song.synced_lyrics ?? "";
       track.ttml = song.ttml ?? "";
       track.title = song.title ?? "";
@@ -167,6 +171,24 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       transcriptFallbackTargets.push(track);
     }
   }
+
+  // title/album/artist が空の m4a はファイルから読み取る
+  await Promise.all(
+    tracks
+      .filter((t) => t.name.toLowerCase().endsWith(".m4a") && (!t.title || !t.album || !t.artist || !t.lyrics))
+      .map(async (track) => {
+        try {
+          const tags = await invoke<{ title: string | null; album: string | null; artist: string | null; lyrics: string | null }>(
+            "read_m4a_tags",
+            { path: track.path }
+          );
+          if (!track.title && tags.title) track.title = tags.title;
+          if (!track.album && tags.album) track.album = tags.album;
+          if (!track.artist && tags.artist) track.artist = tags.artist;
+          if (!track.lyrics && tags.lyrics) track.lyrics = tags.lyrics;
+        } catch { /* タグ読み取り失敗は無視 */ }
+      })
+  );
 
   // transcript が空なら .txt フォールバックを並列で読む
   await Promise.all(

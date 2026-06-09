@@ -7,6 +7,7 @@ export type Track = {
   bad: boolean;
   transcript: string;
   lyrics: string;
+  draftLyrics: string;
   syncedLyrics: string;
   ttml: string;
   title: string;
