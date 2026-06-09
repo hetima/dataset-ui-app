@@ -27,13 +27,25 @@ src/
   App.tsx               # 全体組み立て・audio要素・D&D・キーボード
   lib/
     audio.ts            # フォルダ走査・formatDuration・formatSize
+    settings.ts         # 設定の読み書き
+    utils.ts            # shadcn/ui ユーティリティ
+  hooks/
+    use-mobile.ts       # モバイル判定フック
+  views/
+    PlayerView.tsx      # プレイヤーメインビュー
+    SettingsView.tsx    # 設定画面
   components/
+    PlayerSidebar.tsx   # サイドバー全体レイアウト
     Header.tsx          # ヘッダーレイアウト
     AudioControls.tsx   # 再生コントロール・シークバー
     NowPlaying.tsx      # 再生中ファイル名表示
     SearchField.tsx     # 検索入力
     PlaylistTable.tsx   # TanStack Table プレイリスト
     DetailPanel.tsx     # 選択ファイル詳細情報
+    sidebar/
+      FolderLibrary.tsx # フォルダライブラリ一覧
+      RatedList.tsx     # レーティング済みリスト
+      RecentFolders.tsx # 最近開いたフォルダ
     ui/                 # shadcn/ui コンポーネント
 src-tauri/              # Tauri バックエンド（Rust）
 docs/

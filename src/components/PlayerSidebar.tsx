@@ -1,21 +1,19 @@
 import { useState, forwardRef } from "react";
-import { FolderBookmark, Clock8, ThumbsUp, ThumbsDown, Settings } from "lucide-react";
+import { FolderBookmark, Clock8, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Track } from "@/types";
 import { FolderLibrary } from "./sidebar/FolderLibrary";
 import { RecentFolders } from "./sidebar/RecentFolders";
 import { RatedList } from "./sidebar/RatedList";
-import { SettingsTab } from "./sidebar/SettingsTab";
 
-type TabId = "library" | "recent" | "good" | "bad" | "settings";
+type TabId = "library" | "recent" | "good" | "bad";
 type SidebarMode = "icon" | "open";
 
 const TABS: { id: TabId; icon: React.ReactNode; title: string }[] = [
   { id: "library",  icon: <FolderBookmark className="w-4 h-4" />,  title: "フォルダライブラリ" },
-  { id: "recent",   icon: <Clock8 className="w-4 h-4" />,      title: "最近使ったフォルダ" },
+  { id: "recent",   icon: <Clock8 className="w-4 h-4" />,          title: "最近使ったフォルダ" },
   { id: "good",     icon: <ThumbsUp className="w-4 h-4" />,        title: "Good" },
-  { id: "bad",      icon: <ThumbsDown className="w-4 h-4" />,  title: "Bad" },
-  { id: "settings", icon: <Settings className="w-4 h-4" />,    title: "設定" },
+  { id: "bad",      icon: <ThumbsDown className="w-4 h-4" />,      title: "Bad" },
 ];
 
 type Props = {
@@ -33,13 +31,9 @@ type Props = {
   onSelect: (index: number) => void;
   onMoveGood: () => void;
   onMoveBad: () => void;
-  onGoodFolderNameChange: (name: string) => void;
-  onBadFolderNameChange: (name: string) => void;
-  syncToggle: boolean;
-  onSyncToggleChange: (v: boolean) => void;
 };
 
-export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar({
+export const PlayerSidebar = forwardRef<HTMLDivElement, Props>(function PlayerSidebar({
   tracks,
   currentIndex,
   folderLibrary,
@@ -54,10 +48,6 @@ export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar(
   onSelect,
   onMoveGood,
   onMoveBad,
-  onGoodFolderNameChange,
-  onBadFolderNameChange,
-  syncToggle,
-  onSyncToggleChange,
 }: Props, ref: React.ForwardedRef<HTMLDivElement>) {
   const [activeTab, setActiveTab] = useState<TabId>("library");
   const isOpen = mode === "open";
@@ -132,16 +122,6 @@ export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar(
               subFolderName={badFolderName}
               onSelect={onSelect}
               onMove={onMoveBad}
-            />
-          )}
-          {activeTab === "settings" && (
-            <SettingsTab
-              goodFolderName={goodFolderName}
-              badFolderName={badFolderName}
-              syncToggle={syncToggle}
-              onGoodFolderNameChange={onGoodFolderNameChange}
-              onBadFolderNameChange={onBadFolderNameChange}
-              onSyncToggleChange={onSyncToggleChange}
             />
           )}
         </div>

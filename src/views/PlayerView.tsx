@@ -7,16 +7,20 @@ import { AppSettings } from "../lib/settings";
 import { reducer, initialState } from "../reducer";
 import { PlayMode } from "../types";
 import { scanFolder, saveMtdt, moveRatedFiles, getFileSize } from "../lib/audio";
+import { Play, Settings } from "lucide-react";
 import { Header } from "../components/Header";
-import { AppSidebar } from "../components/AppSidebar";
+import { PlayerSidebar } from "../components/PlayerSidebar";
 import { PlaylistTable } from "../components/PlaylistTable";
 import { DetailPanel } from "../components/DetailPanel";
+import { SettingsView } from "./SettingsView";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import "../App.css";
 
 const appWindow = getCurrentWebviewWindow();
 const SIDEBAR_MIN_WIDTH = 160;
 const SIDEBAR_MAX_WIDTH = 480;
+type ContentTab = "player" | "settings";
 
 export function PlayerView() {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -34,6 +38,7 @@ export function PlayerView() {
   const [sidebarMode, setSidebarMode] = useState<"icon" | "open">("icon");
   const [sidebarWidth, setSidebarWidth] = useState(224);
   const [showDetailPanel, setShowDetailPanel] = useState(true);
+  const [activeContentTab, setActiveContentTab] = useState<ContentTab>("player");
   const [isLoading, setIsLoading] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -323,12 +328,12 @@ export function PlayerView() {
     return () => { promise.then((fn) => fn()); };
   }, [handleAddToLibrary]);
 
-  // キーボード操作（capture: true で全フォーカス状態から横取り）
+  // キーボード操作（capture: true で各タブのショートカットを切り替える）
   useEffect(() => {
     const isTextInput = (t: EventTarget | null) =>
       t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
 
-    const handler = (e: KeyboardEvent) => {
+    const handlePlayerKeyDown = (e: KeyboardEvent) => {
       if (e.code === "KeyS" && e.ctrlKey) {
         e.preventDefault();
         e.stopPropagation();
@@ -402,9 +407,25 @@ export function PlayerView() {
         dispatch({ type: "CLEAR_RATING", index: state.currentIndex });
       }
     };
+
+    const handleSettingsKeyDown = (_e: KeyboardEvent) => {
+      // 設定タブ固有のショートカットは必要になった時点でここに追加する。
+    };
+
+    const handler = (e: KeyboardEvent) => {
+      switch (activeContentTab) {
+        case "player":
+          handlePlayerKeyDown(e);
+          break;
+        case "settings":
+          handleSettingsKeyDown(e);
+          break;
+      }
+    };
+
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
-  }, [getAdjacentVisibleIndex, state.isPlaying, state.currentIndex, saveCurrentFolder]);
+  }, [activeContentTab, getAdjacentVisibleIndex, state.isPlaying, state.currentIndex, saveCurrentFolder]);
 
   const handlePlayPause = () => dispatch({ type: "SET_PLAYING", playing: !state.isPlaying });
   const handlePrev = () => {
@@ -439,7 +460,7 @@ export function PlayerView() {
   }, [state.currentIndex, state.tracks]);
 
   return (
-    <div className="flex flex-col h-screen">
+    <>
       <Dialog open={isLoading} onOpenChange={() => {}}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
@@ -456,84 +477,98 @@ export function PlayerView() {
           </DialogHeader>
         </DialogContent>
       </Dialog>
-      <Header
-        isPlaying={state.isPlaying}
-        playMode={state.playMode}
-        currentTime={currentTime}
-        duration={currentTrack?.duration ?? 0}
-        nowPlayingName={currentTrack?.name ?? null}
-        nowPlayingFolder={nowPlayingFolder}
-        searchQuery={state.searchQuery}
-        onPlayPause={handlePlayPause}
-        onPrev={handlePrev}
-        onNext={handleNext}
-        searchRef={searchRef}
-        onCyclePlayMode={() => dispatch({ type: "CYCLE_PLAY_MODE" })}
-        onSeek={handleSeek}
-        onSearchChange={(q) => dispatch({ type: "SET_SEARCH", query: q })}
-        onSearchEscapeToTable={() => tableRef.current?.focus()}
-        volume={volume}
-        onVolumeChange={handleVolumeChange}
-        onToggleSidebar={() => setSidebarMode((m) => m === "icon" ? "open" : "icon")}
-        onToggleDetailPanel={() => setShowDetailPanel((v) => !v)}
-      />
-      <div className="flex flex-1 overflow-hidden">
-        <AppSidebar
-          ref={sidebarRef}
-          tracks={state.tracks}
-          currentIndex={state.currentIndex}
-          folderLibrary={folderLibrary}
-          recentFolders={recentFolders}
-          mode={sidebarMode}
-          openWidth={sidebarWidth}
-          goodFolderName={goodFolderName}
-          badFolderName={badFolderName}
-          onModeChange={setSidebarMode}
-          onLoadFolder={handleLoadFolder}
-          onRemoveLibrary={handleRemoveLibrary}
-          onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
-          onMoveGood={() => handleMoveRated("good")}
-          onMoveBad={() => handleMoveRated("bad")}
-          onGoodFolderNameChange={handleGoodFolderNameChange}
-          onBadFolderNameChange={handleBadFolderNameChange}
-          syncToggle={syncToggle}
-          onSyncToggleChange={handleSyncToggleChange}
-        />
-        {sidebarMode === "open" && (
-          <div
-            className="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-border"
-            onPointerDown={handleSidebarResizeStart}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="サイドバー幅"
-          />
-        )}
-        <div className="w-px shrink-0 bg-border" />
-        <PlaylistTable
-          tracks={state.tracks}
-          currentIndex={state.currentIndex}
-          searchQuery={state.searchQuery}
-          ref={tableRef}
-          onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
-          onVisibleIndicesChange={handleVisibleIndicesChange}
-        />
-        <div
-          className="shrink-0 overflow-hidden transition-all duration-200 border-l"
-          style={{ width: showDetailPanel ? "16rem" : "0" }}
-        >
-          <DetailPanel
-            track={currentTrack}
-            onSetGood={() => state.currentIndex !== null && dispatch({ type: "SET_GOOD", index: state.currentIndex })}
-            onSetBad={() => state.currentIndex !== null && dispatch({ type: "SET_BAD", index: state.currentIndex })}
-          />
-        </div>
-      </div>
       <audio
         ref={audioRef}
         onEnded={handleEnded}
         onLoadedMetadata={handleLoadedMetadata}
         onTimeUpdate={handleTimeUpdate}
       />
-    </div>
+      <Tabs value={activeContentTab} onValueChange={(value) => setActiveContentTab(value as ContentTab)} className="flex flex-col h-screen">
+        <TabsList className="shrink-0 rounded-none border-b px-2 w-full justify-start h-8">
+          <TabsTrigger value="player" className="flex-none"><Play />プレイヤー</TabsTrigger>
+          <TabsTrigger value="settings" className="flex-none"><Settings />設定</TabsTrigger>
+        </TabsList>
+        <TabsContent value="player" className="flex flex-col flex-1 overflow-hidden mt-0">
+          <Header
+            isPlaying={state.isPlaying}
+            playMode={state.playMode}
+            currentTime={currentTime}
+            duration={currentTrack?.duration ?? 0}
+            nowPlayingName={currentTrack?.name ?? null}
+            nowPlayingFolder={nowPlayingFolder}
+            searchQuery={state.searchQuery}
+            onPlayPause={handlePlayPause}
+            onPrev={handlePrev}
+            onNext={handleNext}
+            searchRef={searchRef}
+            onCyclePlayMode={() => dispatch({ type: "CYCLE_PLAY_MODE" })}
+            onSeek={handleSeek}
+            onSearchChange={(q) => dispatch({ type: "SET_SEARCH", query: q })}
+            onSearchEscapeToTable={() => tableRef.current?.focus()}
+            volume={volume}
+            onVolumeChange={handleVolumeChange}
+            onToggleSidebar={() => setSidebarMode((m) => m === "icon" ? "open" : "icon")}
+            onToggleDetailPanel={() => setShowDetailPanel((v) => !v)}
+          />
+          <div className="flex flex-1 overflow-hidden">
+            <PlayerSidebar
+              ref={sidebarRef}
+              tracks={state.tracks}
+              currentIndex={state.currentIndex}
+              folderLibrary={folderLibrary}
+              recentFolders={recentFolders}
+              mode={sidebarMode}
+              openWidth={sidebarWidth}
+              goodFolderName={goodFolderName}
+              badFolderName={badFolderName}
+              onModeChange={setSidebarMode}
+              onLoadFolder={handleLoadFolder}
+              onRemoveLibrary={handleRemoveLibrary}
+              onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
+              onMoveGood={() => handleMoveRated("good")}
+              onMoveBad={() => handleMoveRated("bad")}
+            />
+            {sidebarMode === "open" && (
+              <div
+                className="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-border"
+                onPointerDown={handleSidebarResizeStart}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="サイドバー幅"
+              />
+            )}
+            <div className="w-px shrink-0 bg-border" />
+            <PlaylistTable
+              tracks={state.tracks}
+              currentIndex={state.currentIndex}
+              searchQuery={state.searchQuery}
+              ref={tableRef}
+              onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
+              onVisibleIndicesChange={handleVisibleIndicesChange}
+            />
+            <div
+              className="shrink-0 overflow-hidden transition-all duration-200 border-l"
+              style={{ width: showDetailPanel ? "16rem" : "0" }}
+            >
+              <DetailPanel
+                track={currentTrack}
+                onSetGood={() => state.currentIndex !== null && dispatch({ type: "SET_GOOD", index: state.currentIndex })}
+                onSetBad={() => state.currentIndex !== null && dispatch({ type: "SET_BAD", index: state.currentIndex })}
+              />
+            </div>
+          </div>
+        </TabsContent>
+        <TabsContent value="settings" className="flex flex-1 overflow-hidden mt-0">
+          <SettingsView
+            goodFolderName={goodFolderName}
+            badFolderName={badFolderName}
+            syncToggle={syncToggle}
+            onGoodFolderNameChange={handleGoodFolderNameChange}
+            onBadFolderNameChange={handleBadFolderNameChange}
+            onSyncToggleChange={handleSyncToggleChange}
+          />
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }

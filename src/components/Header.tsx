@@ -33,7 +33,7 @@ export function Header(props: Props) {
   const hasTrack = props.duration > 0;
 
   return (
-    <header className="h-24 flex flex-col justify-center gap-1 px-4 border-b bg-background shrink-0">
+    <header className="h-20 flex flex-col justify-start gap-1 px-4 border-b bg-background shrink-0">
       {/* 1段目: ボタン群 + フォルダ名（絶対中央）+ ボリューム */}
       <div className="relative flex items-center gap-2">
         <AudioControls
