@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Field, FieldDescription, FieldGroup, FieldLegend, FieldSet, FieldTitle } from "@/components/ui/field";
 
 type Section = "general" | "player";
 
@@ -48,59 +49,53 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, onGood
       </div>
 
       {/* コンテンツ（右） */}
-      <div className="flex-1 overflow-y-auto p-3 max-w-2xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto p-4 max-w-2xl mx-auto w-full">
         {section === "general" && (
           <p className="text-xs text-muted-foreground">設定項目はありません</p>
         )}
         {section === "player" && (
-          <div className="space-y-4">
-            {/* 移動先フォルダ名設定 */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">移動先フォルダ名</p>
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs w-8 shrink-0">Good</span>
-                  <Input
-                    className="h-6 text-xs"
-                    value={goodFolderName}
-                    onChange={(e) => onGoodFolderNameChange(e.target.value)}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs w-8 shrink-0">Bad</span>
-                  <Input
-                    className="h-6 text-xs"
-                    value={badFolderName}
-                    onChange={(e) => onBadFolderNameChange(e.target.value)}
-                  />
-                </div>
+          <FieldGroup>
+            {/* 移動先フォルダ名 */}
+            <FieldSet>
+              <FieldLegend variant="label">移動先フォルダ名</FieldLegend>
+              <Field orientation="horizontal">
+                <FieldTitle className="w-10 shrink-0">Good</FieldTitle>
+                <Input
+                  className="h-7 text-xs"
+                  value={goodFolderName}
+                  onChange={(e) => onGoodFolderNameChange(e.target.value)}
+                />
+              </Field>
+              <Field orientation="horizontal">
+                <FieldTitle className="w-10 shrink-0">Bad</FieldTitle>
+                <Input
+                  className="h-7 text-xs"
+                  value={badFolderName}
+                  onChange={(e) => onBadFolderNameChange(e.target.value)}
+                />
+              </Field>
+            </FieldSet>
+
+            {/* 同期トグル */}
+            <Field orientation="horizontal">
+              <div className="flex-1">
+                <FieldTitle>← / → 同期トグル</FieldTitle>
+                <FieldDescription>オンにすると ← / → の挙動が変わります</FieldDescription>
               </div>
-            </div>
-
-            <hr className="border-border/50" />
-
-            {/* 同期トグル設定 */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">← / → 同期トグル</span>
               <Switch checked={syncToggle} onCheckedChange={onSyncToggleChange} />
-            </div>
-
-            <hr className="border-border/50" />
+            </Field>
 
             {/* ショートカットキー */}
-            <div className="space-y-0">
-              <p className="text-xs font-semibold text-muted-foreground mb-3">ショートカットキー</p>
-              {SHORTCUTS.map(({ key, desc }, i) => (
-                <div key={key}>
-                  <div className="py-2">
-                    <p className="text-xs font-mono font-semibold text-foreground">{key}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-line">{desc}</p>
-                  </div>
-                  {i < SHORTCUTS.length - 1 && <hr className="border-border/50" />}
-                </div>
+            <FieldSet>
+              <FieldLegend variant="label">ショートカットキー</FieldLegend>
+              {SHORTCUTS.map(({ key, desc }) => (
+                <Field key={key} orientation="horizontal">
+                  <FieldTitle className="w-48 shrink-0 font-mono">{key}</FieldTitle>
+                  <FieldDescription className="whitespace-pre-line">{desc}</FieldDescription>
+                </Field>
               ))}
-            </div>
-          </div>
+            </FieldSet>
+          </FieldGroup>
         )}
       </div>
     </div>
