@@ -1,4 +1,7 @@
-import { FolderOpen, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { readDir } from "@tauri-apps/plugin-fs";
+import { join } from "@tauri-apps/api/path";
+import { ChevronDown, ChevronRight, FolderOpen, RefreshCw, Trash2 } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -12,9 +15,105 @@ type Props = {
   onRemove: (folder: string) => void;
 };
 
+type FolderNodeProps = {
+  path: string;
+  depth: number;
+  isRoot: boolean;
+  onLoad: (folder: string) => void;
+  onRemove: (folder: string) => void;
+};
+
 /** フォルダ名のみ取り出す */
 function folderName(path: string): string {
   return path.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? path;
+}
+
+function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) {
+  const [children, setChildren] = useState<string[] | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const hasChildren = children !== null && children.length > 0;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadChildren() {
+      try {
+        const entries = await readDir(path);
+        const childPaths = await Promise.all(
+          entries
+            .filter((entry) => entry.isDirectory)
+            .map((entry) => join(path, entry.name))
+        );
+        if (!cancelled) {
+          setChildren(childPaths.sort((a, b) => folderName(a).localeCompare(folderName(b))));
+        }
+      } catch {
+        if (!cancelled) setChildren([]);
+      }
+    }
+    loadChildren();
+    return () => { cancelled = true; };
+  }, [path]);
+
+  return (
+    <li>
+      <ContextMenu>
+        <ContextMenuTrigger render={<div />}>
+          <div
+            className="flex items-center gap-1 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm truncate w-full"
+            style={{ paddingLeft: `${8 + depth * 14}px` }}
+            onClick={() => onLoad(path)}
+          >
+            {hasChildren ? (
+              <button
+                type="button"
+                className="w-4 h-4 shrink-0 flex items-center justify-center rounded-sm hover:bg-muted"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpen((v) => !v);
+                }}
+                aria-label={isOpen ? "折りたたむ" : "展開"}
+              >
+                {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              </button>
+            ) : (
+              <span className="w-4 h-4 shrink-0" />
+            )}
+            <FolderOpen className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate">{folderName(path)}</span>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => onLoad(path)}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            再読み込み
+          </ContextMenuItem>
+          {isRoot && (
+            <ContextMenuItem
+              className="text-destructive"
+              onClick={() => onRemove(path)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              リストから取り除く
+            </ContextMenuItem>
+          )}
+        </ContextMenuContent>
+      </ContextMenu>
+      {isOpen && hasChildren && (
+        <ul className="space-y-0.5">
+          {children.map((child) => (
+            <FolderNode
+              key={child}
+              path={child}
+              depth={depth + 1}
+              isRoot={false}
+              onLoad={onLoad}
+              onRemove={onRemove}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
 }
 
 export function FolderLibrary({ folders, onLoad, onRemove }: Props) {
@@ -29,25 +128,14 @@ export function FolderLibrary({ folders, onLoad, onRemove }: Props) {
   return (
     <ul className="space-y-0.5">
       {folders.map((f) => (
-        <ContextMenu key={f}>
-          <ContextMenuTrigger
-            className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm truncate w-full"
-            onClick={() => onLoad(f)}
-            render={<li />}
-          >
-            <FolderOpen className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate">{folderName(f)}</span>
-          </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem
-              className="text-destructive"
-              onClick={() => onRemove(f)}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              削除
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
+        <FolderNode
+          key={f}
+          path={f}
+          depth={0}
+          isRoot
+          onLoad={onLoad}
+          onRemove={onRemove}
+        />
       ))}
     </ul>
   );
