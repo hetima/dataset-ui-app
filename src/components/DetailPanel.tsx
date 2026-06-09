@@ -59,6 +59,14 @@ export function DetailPanel({ track, onSetGood, onSetBad }: Props) {
           <p className="whitespace-pre-wrap break-all">{track.transcript}</p>
         </div>
       )}
+      {(track.lyrics || track.syncedLyrics || track.ttml) && (
+        <div>
+          <p className="text-xs text-muted-foreground">{t("details.lyrics")}</p>
+          {track.lyrics && <p className="whitespace-pre-wrap break-all">{track.lyrics}</p>}
+          {track.syncedLyrics && <p className="whitespace-pre-wrap break-all">{track.syncedLyrics}</p>}
+          {track.ttml && <p className="whitespace-pre-wrap break-all">{track.ttml}</p>}
+        </div>
+      )}
     </div>
   );
 }

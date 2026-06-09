@@ -6,6 +6,12 @@ export type Track = {
   good: boolean;
   bad: boolean;
   transcript: string;
+  lyrics: string;
+  syncedLyrics: string;
+  ttml: string;
+  title: string;
+  album: string;
+  artist: string;
 };
 
 export type PlayMode = "stop" | "continuous" | "repeat";

@@ -12,11 +12,37 @@ type MtdtRecord = {
   [key: string]: unknown;
 };
 
+// songs キーの1レコード型
+type SongRecord = {
+  filename?: string;
+  lyrics?: string;
+  synced_lyrics?: string;
+  ttml?: string;
+  title?: string;
+  album?: string;
+  artist?: string;
+  duration?: number;
+  [key: string]: unknown;
+};
+
 // 新形式: audiofiles は filename をキーとした辞書
 type MtdtFile = {
   audiofiles?: Record<string, MtdtRecord> | MtdtRecord[]; // 旧形式(配列)との互換のためunion
+  songs?: Record<string, SongRecord> | SongRecord[]; // audiofiles と同じ形式
   [key: string]: unknown;
 };
+
+/** mtdt.json の songs を filename キーの Map に正規化して返す */
+function parseSongs(songs: MtdtFile["songs"]): Map<string, SongRecord> {
+  const map = new Map<string, SongRecord>();
+  if (!songs) return map;
+  if (Array.isArray(songs)) {
+    for (const r of songs) if (r.filename) map.set(r.filename, r);
+  } else {
+    for (const [k, v] of Object.entries(songs)) map.set(k, v as SongRecord);
+  }
+  return map;
+}
 
 /** mtdt.json の audiofiles を filename キーの Map に正規化して返す */
 function parseAudiofiles(audiofiles: MtdtFile["audiofiles"]): Map<string, MtdtRecord> {
@@ -32,14 +58,14 @@ function parseAudiofiles(audiofiles: MtdtFile["audiofiles"]): Map<string, MtdtRe
 }
 
 /** mtdt.json を読み込んで filename をキーとしたマップを返す */
-export async function loadMtdt(folderPath: string): Promise<{ map: Map<string, MtdtRecord>; raw: MtdtFile }> {
+export async function loadMtdt(folderPath: string): Promise<{ map: Map<string, MtdtRecord>; songsMap: Map<string, SongRecord>; raw: MtdtFile }> {
   const mtdtPath = await join(folderPath, "mtdt.json");
   try {
     const text = await readTextFile(mtdtPath);
     const raw: MtdtFile = JSON.parse(text);
-    return { map: parseAudiofiles(raw.audiofiles), raw };
+    return { map: parseAudiofiles(raw.audiofiles), songsMap: parseSongs(raw.songs), raw };
   } catch {
-    return { map: new Map(), raw: {} };
+    return { map: new Map(), songsMap: new Map(), raw: {} };
   }
 }
 
@@ -102,13 +128,19 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       good: false,
       bad: false,
       transcript: "",
+      lyrics: "",
+      syncedLyrics: "",
+      ttml: "",
+      title: "",
+      album: "",
+      artist: "",
     });
   }
 
   tracks.sort((a, b) => a.name.localeCompare(b.name));
 
   // mtdt.json を読み込んでメタデータを反映
-  const { map: mtdtMap } = await loadMtdt(folderPath);
+  const { map: mtdtMap, songsMap } = await loadMtdt(folderPath);
 
   const transcriptFallbackTargets: Track[] = [];
   for (const track of tracks) {
@@ -118,6 +150,17 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       track.bad = rec.bad ?? false;
       track.duration = rec.duration ?? 0;
       track.transcript = rec.transcript ?? "";
+    }
+
+    const song = songsMap.get(track.name);
+    if (song) {
+      track.lyrics = song.lyrics ?? "";
+      track.syncedLyrics = song.synced_lyrics ?? "";
+      track.ttml = song.ttml ?? "";
+      track.title = song.title ?? "";
+      track.album = song.album ?? "";
+      track.artist = song.artist ?? "";
+      if (song.duration) track.duration = song.duration;
     }
 
     if (!track.transcript) {

@@ -54,6 +54,7 @@ const resources = {
         loading: "取得中...",
         duration: "再生時間",
         transcript: "テキスト",
+        lyrics: "歌詞",
       },
       sidebar: {
         folderLibrary: "フォルダライブラリ",
@@ -149,6 +150,7 @@ const resources = {
         loading: "Loading...",
         duration: "Duration",
         transcript: "Text",
+        lyrics: "Lyrics",
       },
       sidebar: {
         folderLibrary: "Folder library",
