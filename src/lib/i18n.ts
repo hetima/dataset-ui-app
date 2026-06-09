@@ -17,6 +17,8 @@ const resources = {
         none: "該当なし",
         loading: "読み込み中",
         moving: "移動中",
+        ok: "OK",
+        cancel: "キャンセル",
       },
       tabs: {
         player: "プレイヤー",
@@ -68,6 +70,11 @@ const resources = {
         count: "{{count}}件",
         move: "移動",
         moveToFolder: "「{{folder}}」フォルダに移動",
+        actions: "操作",
+        clearFlags: "フラグをクリア",
+        confirm: "確認",
+        confirmMove: "{{count}}件を「{{folder}}」フォルダに移動しますか？",
+        confirmClear: "{{count}}件のフラグをクリアしますか？",
       },
       settings: {
         sections: {
@@ -113,6 +120,8 @@ const resources = {
         none: "None",
         loading: "Loading",
         moving: "Moving",
+        ok: "OK",
+        cancel: "Cancel",
       },
       tabs: {
         player: "Player",
@@ -164,6 +173,11 @@ const resources = {
         count: "{{count}} items",
         move: "Move",
         moveToFolder: "Move to \"{{folder}}\" folder",
+        actions: "Actions",
+        clearFlags: "Clear flags",
+        confirm: "Confirm",
+        confirmMove: "Move {{count}} item(s) to \"{{folder}}\" folder?",
+        confirmClear: "Clear flags for {{count}} item(s)?",
       },
       settings: {
         sections: {

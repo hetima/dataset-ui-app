@@ -204,6 +204,14 @@ export function PlayerView() {
     }
   }, [goodFolderName, badFolderName, t]);
 
+  // good/bad フラグを一括クリア
+  const handleClearRatings = useCallback((rating: "good" | "bad") => {
+    const indices = tracksRef.current
+      .map((t, i) => (rating === "good" ? t.good : t.bad) ? i : -1)
+      .filter((i) => i >= 0);
+    for (const i of indices) dispatch({ type: "CLEAR_RATING", index: i });
+  }, []);
+
   // ウィンドウを閉じる前に保存
   useEffect(() => {
     const promise = appWindow.onCloseRequested(async () => {
@@ -556,6 +564,8 @@ export function PlayerView() {
               onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
               onMoveGood={() => handleMoveRated("good")}
               onMoveBad={() => handleMoveRated("bad")}
+              onClearGoodRatings={() => handleClearRatings("good")}
+              onClearBadRatings={() => handleClearRatings("bad")}
             />
             {sidebarMode === "open" && (
               <div

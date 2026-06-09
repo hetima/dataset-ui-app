@@ -32,6 +32,8 @@ type Props = {
   onSelect: (index: number) => void;
   onMoveGood: () => void;
   onMoveBad: () => void;
+  onClearGoodRatings: () => void;
+  onClearBadRatings: () => void;
 };
 
 export const PlayerSidebar = forwardRef<HTMLDivElement, Props>(function PlayerSidebar({
@@ -49,6 +51,8 @@ export const PlayerSidebar = forwardRef<HTMLDivElement, Props>(function PlayerSi
   onSelect,
   onMoveGood,
   onMoveBad,
+  onClearGoodRatings,
+  onClearBadRatings,
 }: Props, ref: React.ForwardedRef<HTMLDivElement>) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabId>("library");
@@ -114,6 +118,7 @@ export const PlayerSidebar = forwardRef<HTMLDivElement, Props>(function PlayerSi
               subFolderName={goodFolderName}
               onSelect={onSelect}
               onMove={onMoveGood}
+              onClearRatings={onClearGoodRatings}
             />
           </div>
           <div className={activeTab === "bad" ? "block" : "hidden"}>
@@ -124,6 +129,7 @@ export const PlayerSidebar = forwardRef<HTMLDivElement, Props>(function PlayerSi
               subFolderName={badFolderName}
               onSelect={onSelect}
               onMove={onMoveBad}
+              onClearRatings={onClearBadRatings}
             />
           </div>
         </div>
