@@ -101,6 +101,10 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
   });
 
   const rows = table.getRowModel().rows;
+  const currentRowIndex = useMemo(() => {
+    if (currentIndex === null) return -1;
+    return rows.findIndex((row) => originalIndexMap.get(row.original) === currentIndex);
+  }, [currentIndex, originalIndexMap, rows]);
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => containerRef.current,
@@ -114,12 +118,10 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
   }, [onVisibleIndicesChange, originalIndexMap, rows]);
 
   useEffect(() => {
-    if (currentIndex === null) return;
-    const rowIndex = rows.findIndex((row) => originalIndexMap.get(row.original) === currentIndex);
-    if (rowIndex >= 0) {
-      rowVirtualizer.scrollToIndex(rowIndex, { align: "auto" });
+    if (currentRowIndex >= 0) {
+      rowVirtualizer.scrollToIndex(currentRowIndex, { align: "auto" });
     }
-  }, [currentIndex, originalIndexMap, rowVirtualizer, rows]);
+  }, [currentIndex, currentRowIndex, rowVirtualizer]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden outline-none">

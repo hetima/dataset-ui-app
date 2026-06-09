@@ -488,7 +488,7 @@ export function PlayerView() {
           <TabsTrigger value="player" className="flex-none"><Play />プレイヤー</TabsTrigger>
           <TabsTrigger value="settings" className="flex-none"><Settings />設定</TabsTrigger>
         </TabsList>
-        <TabsContent value="player" className="flex flex-col flex-1 overflow-hidden mt-0">
+        <TabsContent value="player" keepMounted className="flex flex-col flex-1 overflow-hidden mt-0">
           <Header
             isPlaying={state.isPlaying}
             playMode={state.playMode}
@@ -558,7 +558,7 @@ export function PlayerView() {
             </div>
           </div>
         </TabsContent>
-        <TabsContent value="settings" className="flex flex-1 overflow-hidden mt-0">
+        <TabsContent value="settings" keepMounted className="flex flex-1 overflow-hidden mt-0">
           <SettingsView
             goodFolderName={goodFolderName}
             badFolderName={badFolderName}

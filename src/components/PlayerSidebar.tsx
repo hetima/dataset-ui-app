@@ -94,17 +94,17 @@ export const PlayerSidebar = forwardRef<HTMLDivElement, Props>(function PlayerSi
       {/* コンテンツ */}
       {isOpen && (
         <div className="flex-1 overflow-y-auto py-2 min-w-0">
-          {activeTab === "library" && (
+          <div className={activeTab === "library" ? "block" : "hidden"}>
             <FolderLibrary
               folders={folderLibrary}
               onLoad={onLoadFolder}
               onRemove={onRemoveLibrary}
             />
-          )}
-          {activeTab === "recent" && (
+          </div>
+          <div className={activeTab === "recent" ? "block" : "hidden"}>
             <RecentFolders folders={recentFolders} onLoad={onLoadFolder} />
-          )}
-          {activeTab === "good" && (
+          </div>
+          <div className={activeTab === "good" ? "block" : "hidden"}>
             <RatedList
               tracks={goodTracks}
               currentIndex={currentIndex}
@@ -113,8 +113,8 @@ export const PlayerSidebar = forwardRef<HTMLDivElement, Props>(function PlayerSi
               onSelect={onSelect}
               onMove={onMoveGood}
             />
-          )}
-          {activeTab === "bad" && (
+          </div>
+          <div className={activeTab === "bad" ? "block" : "hidden"}>
             <RatedList
               tracks={badTracks}
               currentIndex={currentIndex}
@@ -123,7 +123,7 @@ export const PlayerSidebar = forwardRef<HTMLDivElement, Props>(function PlayerSi
               onSelect={onSelect}
               onMove={onMoveBad}
             />
-          )}
+          </div>
         </div>
       )}
     </div>
