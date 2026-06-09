@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Play, Pause, SkipBack, SkipForward, Repeat1, ListEnd, StopCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PlayMode } from "@/types";
 
 type Props = {
@@ -17,18 +18,6 @@ const PLAY_MODE_ICON: Record<PlayMode, React.ReactNode> = {
   repeat:     <Repeat1 className="w-5 h-5" />,
 };
 
-const PLAY_MODE_TITLE: Record<PlayMode, string> = {
-  stop:       "再生終了後に停止",
-  continuous: "連続再生",
-  repeat:     "1曲リピート",
-};
-
-const PLAY_MODE_LABEL: Record<PlayMode, string> = {
-  stop:       "通常",
-  continuous: "連続",
-  repeat:     "1曲",
-};
-
 export function AudioControls({
   isPlaying,
   playMode,
@@ -37,6 +26,18 @@ export function AudioControls({
   onNext,
   onCyclePlayMode,
 }: Props) {
+  const { t } = useTranslation();
+  const playModeTitle: Record<PlayMode, string> = {
+    stop: t("controls.stopAfterCurrent"),
+    continuous: t("controls.continuousPlayback"),
+    repeat: t("controls.repeatOne"),
+  };
+  const playModeLabel: Record<PlayMode, string> = {
+    stop: t("controls.stop"),
+    continuous: t("controls.continuous"),
+    repeat: t("controls.repeat"),
+  };
+
   return (
     <div className="flex items-center gap-1">
       <Button variant="ghost" size="lg" className="px-3" onClick={onPrev}><SkipBack className="w-5 h-5" /></Button>
@@ -49,10 +50,10 @@ export function AudioControls({
         size="lg"
         className="px-3 gap-1"
         onClick={onCyclePlayMode}
-        title={PLAY_MODE_TITLE[playMode]}
+        title={playModeTitle[playMode]}
       >
         {PLAY_MODE_ICON[playMode]}
-        <span className="text-xs">{PLAY_MODE_LABEL[playMode]}</span>
+        <span className="text-xs">{playModeLabel[playMode]}</span>
       </Button>
     </div>
   );

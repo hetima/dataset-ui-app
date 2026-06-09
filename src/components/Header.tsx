@@ -1,4 +1,5 @@
 import { RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { AudioControls } from "./AudioControls";
@@ -30,6 +31,7 @@ type Props = {
 };
 
 export function Header(props: Props) {
+  const { t } = useTranslation();
   const hasTrack = props.duration > 0;
 
   return (
@@ -80,7 +82,7 @@ export function Header(props: Props) {
           </span>
         </div>
         <span className="absolute left-1/2 -translate-x-1/2 text-sm font-bold text-foreground truncate max-w-[40%] text-center pointer-events-none">
-          {props.nowPlayingName ?? "再生停止中"}
+          {props.nowPlayingName ?? t("player.stopped")}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <SearchField ref={props.searchRef} value={props.searchQuery} onChange={props.onSearchChange} onEscapeToTable={props.onSearchEscapeToTable} />

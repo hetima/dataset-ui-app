@@ -1,4 +1,5 @@
 import { FolderInput } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Track } from "@/types";
 
@@ -12,26 +13,28 @@ type Props = {
 };
 
 export function RatedList({ tracks, currentIndex, allTracks, subFolderName, onSelect, onMove }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col gap-1">
       {/* ヘッダ */}
       <div className="flex items-center justify-between px-2 py-1">
-        <span className="text-xs text-muted-foreground">{tracks.length}件</span>
+        <span className="text-xs text-muted-foreground">{t("sidebar.count", { count: tracks.length })}</span>
         <Button
           variant="ghost"
           size="sm"
           className="h-6 px-2 text-xs gap-1"
           disabled={tracks.length === 0}
           onClick={onMove}
-          title={`「${subFolderName}」フォルダに移動`}
+          title={t("sidebar.moveToFolder", { folder: subFolderName })}
         >
           <FolderInput className="w-3.5 h-3.5" />
-          移動
+          {t("sidebar.move")}
         </Button>
       </div>
 
       {tracks.length === 0 ? (
-        <p className="text-xs text-muted-foreground px-2 py-2 text-center">該当なし</p>
+        <p className="text-xs text-muted-foreground px-2 py-2 text-center">{t("common.none")}</p>
       ) : (
         <ul className="space-y-0.5">
           {tracks.map((t) => {

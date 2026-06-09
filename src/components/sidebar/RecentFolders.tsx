@@ -1,4 +1,5 @@
 import { Folder } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   folders: string[];
@@ -10,10 +11,12 @@ function folderName(path: string): string {
 }
 
 export function RecentFolders({ folders, onLoad }: Props) {
+  const { t } = useTranslation();
+
   if (folders.length === 0) {
     return (
       <p className="text-xs text-muted-foreground px-2 py-4 text-center">
-        履歴がありません
+        {t("sidebar.noHistory")}
       </p>
     );
   }

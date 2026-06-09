@@ -1,4 +1,5 @@
 import { useState, forwardRef } from "react";
+import { useTranslation } from "react-i18next";
 import { FolderBookmark, Clock8, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Track } from "@/types";
@@ -9,11 +10,11 @@ import { RatedList } from "./sidebar/RatedList";
 type TabId = "library" | "recent" | "good" | "bad";
 type SidebarMode = "icon" | "open";
 
-const TABS: { id: TabId; icon: React.ReactNode; title: string }[] = [
-  { id: "library",  icon: <FolderBookmark className="w-4 h-4" />,  title: "フォルダライブラリ" },
-  { id: "recent",   icon: <Clock8 className="w-4 h-4" />,          title: "最近使ったフォルダ" },
-  { id: "good",     icon: <ThumbsUp className="w-4 h-4" />,        title: "Good" },
-  { id: "bad",      icon: <ThumbsDown className="w-4 h-4" />,      title: "Bad" },
+const TABS: { id: TabId; icon: React.ReactNode; titleKey: string }[] = [
+  { id: "library",  icon: <FolderBookmark className="w-4 h-4" />,  titleKey: "sidebar.folderLibrary" },
+  { id: "recent",   icon: <Clock8 className="w-4 h-4" />,          titleKey: "sidebar.recentFolders" },
+  { id: "good",     icon: <ThumbsUp className="w-4 h-4" />,        titleKey: "common.good" },
+  { id: "bad",      icon: <ThumbsDown className="w-4 h-4" />,      titleKey: "common.bad" },
 ];
 
 type Props = {
@@ -49,6 +50,7 @@ export const PlayerSidebar = forwardRef<HTMLDivElement, Props>(function PlayerSi
   onMoveGood,
   onMoveBad,
 }: Props, ref: React.ForwardedRef<HTMLDivElement>) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabId>("library");
   const isOpen = mode === "open";
 
@@ -77,13 +79,13 @@ export const PlayerSidebar = forwardRef<HTMLDivElement, Props>(function PlayerSi
         className={`flex flex-col items-center gap-0.5 py-1 shrink-0 ${isOpen ? "border-r" : ""}`}
         style={{ width: "2.5rem" }}
       >
-        {TABS.map(({ id, icon, title }) => (
+        {TABS.map(({ id, icon, titleKey }) => (
           <Button
             key={id}
             variant={isOpen && activeTab === id ? "secondary" : "ghost"}
             size="icon"
             className="w-8 h-8"
-            title={title}
+            title={t(titleKey)}
             onClick={() => handleTabClick(id)}
           >
             {icon}

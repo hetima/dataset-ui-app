@@ -1,4 +1,5 @@
 import { load, Store } from "@tauri-apps/plugin-store";
+import { isAppLanguage, type AppLanguage } from "./i18n";
 
 const STORE_PATH = "settings.json";
 const RECENT_FOLDERS_LIMIT = 16;
@@ -12,6 +13,7 @@ const PLAYER_VIEW_KEYS = {
   playMode: "playerview.playMode",
   syncToggle: "playerview.syncToggle",
   sidebarWidth: "playerview.sidebarWidth",
+  language: "playerview.language",
 } as const;
 
 /** アプリ設定の読み書きを担当するクラス */
@@ -33,6 +35,7 @@ export class AppSettings {
         [PLAYER_VIEW_KEYS.playMode]: "stop",
         [PLAYER_VIEW_KEYS.syncToggle]: false,
         [PLAYER_VIEW_KEYS.sidebarWidth]: 0,
+        [PLAYER_VIEW_KEYS.language]: "ja",
       },
       autoSave: false,
     });
@@ -90,6 +93,16 @@ export class PlayerViewSettings {
 
   async setSidebarWidth(width: number): Promise<void> {
     await this.store.set(PLAYER_VIEW_KEYS.sidebarWidth, width);
+    await this.store.save();
+  }
+
+  async getLanguage(): Promise<AppLanguage> {
+    const language = await this.store.get<string>(PLAYER_VIEW_KEYS.language);
+    return language && isAppLanguage(language) ? language : "ja";
+  }
+
+  async setLanguage(language: AppLanguage): Promise<void> {
+    await this.store.set(PLAYER_VIEW_KEYS.language, language);
     await this.store.save();
   }
 

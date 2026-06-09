@@ -2,6 +2,7 @@ import { Track } from "@/types";
 import { formatSize, formatDuration } from "@/lib/audio";
 import { Button } from "@/components/ui/button";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   track: Track | null;
@@ -10,10 +11,12 @@ type Props = {
 };
 
 export function DetailPanel({ track, onSetGood, onSetBad }: Props) {
+  const { t } = useTranslation();
+
   if (!track) {
     return (
       <div className="w-64 shrink-0 p-4 text-sm text-muted-foreground">
-        ファイルを選択してください
+        {t("details.selectFile")}
       </div>
     );
   }
@@ -25,7 +28,7 @@ export function DetailPanel({ track, onSetGood, onSetBad }: Props) {
           variant={track.good ? "default" : "ghost"}
           size="icon"
           onClick={onSetGood}
-          title="Good"
+          title={t("common.good")}
         >
           <ThumbsUp className="w-4 h-4" />
         </Button>
@@ -33,26 +36,26 @@ export function DetailPanel({ track, onSetGood, onSetBad }: Props) {
           variant={track.bad ? "default" : "ghost"}
           size="icon"
           onClick={onSetBad}
-          title="Bad"
+          title={t("common.bad")}
         >
           <ThumbsDown className="w-4 h-4" />
         </Button>
       </div>
       <div>
-        <p className="text-xs text-muted-foreground">ファイル名</p>
+        <p className="text-xs text-muted-foreground">{t("details.fileName")}</p>
         <p className="break-all">{track.name}</p>
       </div>
       <div>
-        <p className="text-xs text-muted-foreground">サイズ</p>
-        <p>{track.size === null ? "取得中..." : formatSize(track.size)}</p>
+        <p className="text-xs text-muted-foreground">{t("details.size")}</p>
+        <p>{track.size === null ? t("details.loading") : formatSize(track.size)}</p>
       </div>
       <div>
-        <p className="text-xs text-muted-foreground">再生時間</p>
+        <p className="text-xs text-muted-foreground">{t("details.duration")}</p>
         <p>{formatDuration(track.duration)}</p>
       </div>
       {track.transcript && (
         <div>
-          <p className="text-xs text-muted-foreground">テキスト</p>
+          <p className="text-xs text-muted-foreground">{t("details.transcript")}</p>
           <p className="whitespace-pre-wrap break-all">{track.transcript}</p>
         </div>
       )}

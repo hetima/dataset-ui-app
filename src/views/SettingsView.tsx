@@ -1,34 +1,39 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Field, FieldDescription, FieldGroup, FieldLegend, FieldSet, FieldTitle } from "@/components/ui/field";
+import type { AppLanguage } from "@/lib/i18n";
 
 type Section = "general" | "player";
 
 const SHORTCUTS = [
-  { key: "スペース", desc: "再生 / 一時停止" },
-  { key: "↑ / ↓", desc: "前後のトラックに移動" },
-  { key: "← / →", desc: "Good / Bad をトグル\n同期トグルをオンにすると挙動が変わります" },
-  { key: "← / G", desc: "Good をトグル" },
-  { key: "→ / B", desc: "Bad をトグル" },
-  { key: "Del / Backspace / H / C", desc: "Good・Bad をクリア" },
-  { key: "L", desc: "再生モードを切り替え（連続 / 1曲 / 通常）" },
-  { key: "Ctrl+F", desc: "検索フィールドにフォーカス（再度で解除）" },
-  { key: "Ctrl+S", desc: "mtdt.json を保存" },
-  { key: "Esc", desc: "検索クリア / テーブルにフォーカス戻す" },
+  { key: "settings.shortcutKeys.space", descKey: "settings.shortcutDescriptions.space" },
+  { key: "↑ / ↓", descKey: "settings.shortcutDescriptions.upDown" },
+  { key: "← / →", descKey: "settings.shortcutDescriptions.leftRight" },
+  { key: "← / G", descKey: "settings.shortcutDescriptions.good" },
+  { key: "→ / B", descKey: "settings.shortcutDescriptions.bad" },
+  { key: "Del / Backspace / H / C", descKey: "settings.shortcutDescriptions.clear" },
+  { key: "L", descKey: "settings.shortcutDescriptions.playMode" },
+  { key: "Ctrl+F", descKey: "settings.shortcutDescriptions.search" },
+  { key: "Ctrl+S", descKey: "settings.shortcutDescriptions.save" },
+  { key: "Esc", descKey: "settings.shortcutDescriptions.escape" },
 ];
 
 type Props = {
   goodFolderName: string;
   badFolderName: string;
   syncToggle: boolean;
+  language: AppLanguage;
   onGoodFolderNameChange: (name: string) => void;
   onBadFolderNameChange: (name: string) => void;
   onSyncToggleChange: (v: boolean) => void;
+  onLanguageChange: (language: AppLanguage) => void;
 };
 
-export function SettingsView({ goodFolderName, badFolderName, syncToggle, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange }: Props) {
+export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange }: Props) {
+  const { t } = useTranslation();
   const [section, setSection] = useState<Section>("general");
 
   return (
@@ -43,7 +48,7 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, onGood
             className="w-full justify-start text-xs h-7"
             onClick={() => setSection(s)}
           >
-            {s === "general" ? "全般" : "プレイヤー"}
+            {t(`settings.sections.${s}`)}
           </Button>
         ))}
       </div>
@@ -51,13 +56,36 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, onGood
       {/* コンテンツ（右） */}
       <div className="flex-1 overflow-y-auto p-4 max-w-2xl mx-auto w-full">
         {section === "general" && (
-          <p className="text-xs text-muted-foreground">設定項目はありません</p>
+          <FieldGroup>
+            <Field orientation="horizontal">
+              <div className="flex-1">
+                <FieldTitle>{t("settings.language")}</FieldTitle>
+                <FieldDescription>{t("settings.languageDescription")}</FieldDescription>
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  variant={language === "ja" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => onLanguageChange("ja")}
+                >
+                  {t("settings.japanese")}
+                </Button>
+                <Button
+                  variant={language === "en" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => onLanguageChange("en")}
+                >
+                  {t("settings.english")}
+                </Button>
+              </div>
+            </Field>
+          </FieldGroup>
         )}
         {section === "player" && (
           <FieldGroup>
             {/* 移動先フォルダ名 */}
             <FieldSet>
-              <FieldLegend variant="label">移動先フォルダ名</FieldLegend>
+              <FieldLegend variant="label">{t("settings.destinationFolderName")}</FieldLegend>
               <Field orientation="horizontal">
                 <FieldTitle className="w-10 shrink-0">Good</FieldTitle>
                 <Input
@@ -79,19 +107,19 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, onGood
             {/* 同期トグル */}
             <Field orientation="horizontal">
               <div className="flex-1">
-                <FieldTitle>← / → 同期トグル</FieldTitle>
-                <FieldDescription>オンにすると ← / → の挙動が変わります</FieldDescription>
+                <FieldTitle>{t("settings.syncToggle")}</FieldTitle>
+                <FieldDescription>{t("settings.syncToggleDescription")}</FieldDescription>
               </div>
               <Switch checked={syncToggle} onCheckedChange={onSyncToggleChange} />
             </Field>
 
             {/* ショートカットキー */}
             <FieldSet>
-              <FieldLegend variant="label">ショートカットキー</FieldLegend>
-              {SHORTCUTS.map(({ key, desc }) => (
+              <FieldLegend variant="label">{t("settings.shortcuts")}</FieldLegend>
+              {SHORTCUTS.map(({ key, descKey }) => (
                 <Field key={key} orientation="horizontal">
-                  <FieldTitle className="w-48 shrink-0 font-mono">{key}</FieldTitle>
-                  <FieldDescription className="whitespace-pre-line">{desc}</FieldDescription>
+                  <FieldTitle className="w-48 shrink-0 font-mono">{key.includes(".") ? t(key) : key}</FieldTitle>
+                  <FieldDescription className="whitespace-pre-line">{t(descKey)}</FieldDescription>
                 </Field>
               ))}
             </FieldSet>

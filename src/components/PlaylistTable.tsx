@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useState, forwardRef, useEffect, useRef, useMemo, useCallback, useDeferredValue } from "react";
+import { useTranslation } from "react-i18next";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import {
   Table,
@@ -31,38 +32,6 @@ type Props = {
 
 const columnHelper = createColumnHelper<Track>();
 
-const columns = [
-  columnHelper.display({
-    id: "status",
-    header: "",
-    size: 32,
-    cell: (info) => {
-      const { good, bad } = info.row.original;
-      if (good) return <ThumbsUp className="w-3.5 h-3.5 shrink-0" />;
-      if (bad)  return <ThumbsDown className="w-3.5 h-3.5 shrink-0" />;
-      return null;
-    },
-  }),
-  columnHelper.accessor("name", {
-    header: "ファイル名",
-    size: 260,
-    cell: (info) => <span className="truncate block max-w-xs">{info.getValue()}</span>,
-  }),
-  columnHelper.accessor("duration", {
-    header: "時間",
-    cell: (info) => formatDuration(info.getValue()),
-    size: 80,
-  }),
-  columnHelper.accessor("transcript", {
-    header: "テキスト",
-    size: 420,
-    cell: (info) => {
-      const v = info.getValue();
-      return v ? <span className="truncate block w-full text-muted-foreground">{v}</span> : null;
-    },
-  }),
-];
-
 function getColumnStyle(columnId: string, size: number) {
   return {
     width: size,
@@ -77,6 +46,7 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
   onSelect,
   onVisibleIndicesChange,
 }, ref) {
+  const { t } = useTranslation();
   const [sorting, setSorting] = useState<SortingState>([]);
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -89,6 +59,37 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
       ref.current = node;
     }
   }, [ref]);
+  const columns = useMemo(() => [
+    columnHelper.display({
+      id: "status",
+      header: "",
+      size: 32,
+      cell: (info) => {
+        const { good, bad } = info.row.original;
+        if (good) return <ThumbsUp className="w-3.5 h-3.5 shrink-0" />;
+        if (bad) return <ThumbsDown className="w-3.5 h-3.5 shrink-0" />;
+        return null;
+      },
+    }),
+    columnHelper.accessor("name", {
+      header: t("playlist.fileName"),
+      size: 260,
+      cell: (info) => <span className="truncate block max-w-xs">{info.getValue()}</span>,
+    }),
+    columnHelper.accessor("duration", {
+      header: t("playlist.duration"),
+      cell: (info) => formatDuration(info.getValue()),
+      size: 80,
+    }),
+    columnHelper.accessor("transcript", {
+      header: t("playlist.transcript"),
+      size: 420,
+      cell: (info) => {
+        const v = info.getValue();
+        return v ? <span className="truncate block w-full text-muted-foreground">{v}</span> : null;
+      },
+    }),
+  ], [t]);
 
   const table = useReactTable({
     data: tracks,

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import { ChevronDown, ChevronRight, Folder, RefreshCw, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -29,6 +30,7 @@ function folderName(path: string): string {
 }
 
 function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) {
+  const { t } = useTranslation();
   const [children, setChildren] = useState<string[] | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const hasChildren = children !== null && children.length > 0;
@@ -71,7 +73,7 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
                   e.stopPropagation();
                   setIsOpen((v) => !v);
                 }}
-                aria-label={isOpen ? "折りたたむ" : "展開"}
+                aria-label={isOpen ? t("sidebar.collapse") : t("sidebar.expand")}
               >
                 {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
@@ -85,7 +87,7 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
         <ContextMenuContent>
           <ContextMenuItem onClick={() => onLoad(path)}>
             <RefreshCw className="w-4 h-4 mr-2" />
-            再読み込み
+            {t("sidebar.reload")}
           </ContextMenuItem>
           {isRoot && (
             <ContextMenuItem
@@ -93,7 +95,7 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
               onClick={() => onRemove(path)}
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              リストから取り除く
+              {t("sidebar.removeFromList")}
             </ContextMenuItem>
           )}
         </ContextMenuContent>
@@ -117,10 +119,12 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
 }
 
 export function FolderLibrary({ folders, onLoad, onRemove }: Props) {
+  const { t } = useTranslation();
+
   if (folders.length === 0) {
     return (
       <p className="text-xs text-muted-foreground px-2 py-4 text-center">
-        フォルダをドロップして追加
+        {t("sidebar.addByDrop")}
       </p>
     );
   }

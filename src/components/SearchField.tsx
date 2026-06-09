@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
 };
 
 export const SearchField = forwardRef<HTMLInputElement, Props>(function SearchField({ value, onChange, onEscapeToTable }, ref) {
+  const { t } = useTranslation();
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Escape") {
       if (value !== "") {
@@ -23,7 +25,7 @@ export const SearchField = forwardRef<HTMLInputElement, Props>(function SearchFi
       <Input
         ref={ref}
         type="search"
-        placeholder="検索..."
+        placeholder={t("search.placeholder")}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}

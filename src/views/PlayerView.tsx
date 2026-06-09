@@ -1,9 +1,11 @@
 import { useReducer, useRef, useEffect, useCallback, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { AppSettings } from "../lib/settings";
+import type { AppLanguage } from "../lib/i18n";
 import { reducer, initialState } from "../reducer";
 import { PlayMode } from "../types";
 import { scanFolder, saveMtdt, moveRatedFiles, getFileSize } from "../lib/audio";
@@ -23,6 +25,7 @@ const SIDEBAR_MAX_WIDTH = 480;
 type ContentTab = "player" | "settings";
 
 export function PlayerView() {
+  const { t, i18n } = useTranslation();
   const [state, dispatch] = useReducer(reducer, initialState);
   const audioRef = useRef<HTMLAudioElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -39,6 +42,7 @@ export function PlayerView() {
   const [sidebarWidth, setSidebarWidth] = useState(224);
   const [showDetailPanel, setShowDetailPanel] = useState(true);
   const [activeContentTab, setActiveContentTab] = useState<ContentTab>("player");
+  const [language, setLanguage] = useState<AppLanguage>("ja");
   const [isLoading, setIsLoading] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -96,6 +100,9 @@ export function PlayerView() {
       setRecentFolders(await playerView.getRecentFolders());
       setGoodFolderName(await playerView.getGoodFolderName());
       setBadFolderName(await playerView.getBadFolderName());
+      const loadedLanguage = await playerView.getLanguage();
+      setLanguage(loadedLanguage);
+      await i18n.changeLanguage(loadedLanguage);
       setSyncToggle(await playerView.getSyncToggle());
       const savedSidebarWidth = await playerView.getSidebarWidth();
       if (savedSidebarWidth > 0) {
@@ -108,7 +115,7 @@ export function PlayerView() {
       dispatch({ type: "SET_PLAY_MODE", mode: savedPlayMode as PlayMode });
       settingsLoadedRef.current = true;
     });
-  }, []);
+  }, [i18n]);
 
   // ボリューム変更を audio に反映し store に保存
   const handleVolumeChange = useCallback(async (v: number) => {
@@ -148,6 +155,13 @@ export function PlayerView() {
     await settings.playerView.setSyncToggle(v);
   }, []);
 
+  const handleLanguageChange = useCallback(async (nextLanguage: AppLanguage) => {
+    setLanguage(nextLanguage);
+    await i18n.changeLanguage(nextLanguage);
+    const settings = await AppSettings.load();
+    await settings.playerView.setLanguage(nextLanguage);
+  }, [i18n]);
+
   // playMode 変化時に設定保存（設定ロード完了後のみ）
   const settingsLoadedRef = useRef(false);
   useEffect(() => {
@@ -164,7 +178,7 @@ export function PlayerView() {
     try {
       const result = await moveRatedFiles(folder, tracksRef.current, rating, subFolderName);
       if (!result.ok) {
-        alert(`以下のファイルが移動先に既に存在します:\n${result.conflicts.join("\n")}`);
+        alert(t("player.conflictMessage", { files: result.conflicts.join("\n") }));
         return;
       }
       if (result.reloadedTracks) {
@@ -173,7 +187,7 @@ export function PlayerView() {
     } finally {
       setIsMoving(false);
     }
-  }, [goodFolderName, badFolderName]);
+  }, [goodFolderName, badFolderName, t]);
 
   // ウィンドウを閉じる前に保存
   useEffect(() => {
@@ -338,7 +352,7 @@ export function PlayerView() {
         e.preventDefault();
         e.stopPropagation();
         saveCurrentFolder().then((saved) => {
-          if (saved) toast.success("保存しました");
+          if (saved) toast.success(t("player.saveComplete"));
         });
         return;
       }
@@ -425,7 +439,7 @@ export function PlayerView() {
 
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
-  }, [activeContentTab, getAdjacentVisibleIndex, state.isPlaying, state.currentIndex, saveCurrentFolder]);
+  }, [activeContentTab, getAdjacentVisibleIndex, state.isPlaying, state.currentIndex, saveCurrentFolder, t]);
 
   const handlePlayPause = () => dispatch({ type: "SET_PLAYING", playing: !state.isPlaying });
   const handlePrev = () => {
@@ -441,7 +455,7 @@ export function PlayerView() {
 
   const currentTrack = state.currentIndex !== null ? state.tracks[state.currentIndex] : null;
   const nowPlayingFolder = currentFolderRef.current && state.tracks.length > 0
-    ? `${currentFolderRef.current.replace(/\\/g, "/").split("/").pop() ?? ""} (${state.tracks.length}項目)`
+    ? `${currentFolderRef.current.replace(/\\/g, "/").split("/").pop() ?? ""} (${t("player.itemCount", { count: state.tracks.length })})`
     : null;
 
   // 詳細パネル用のファイルサイズは選択時に取得する
@@ -464,16 +478,16 @@ export function PlayerView() {
       <Dialog open={isLoading} onOpenChange={() => {}}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>読み込み中</DialogTitle>
-            <DialogDescription>フォルダを読み込んでいます...</DialogDescription>
+            <DialogTitle>{t("common.loading")}</DialogTitle>
+            <DialogDescription>{t("player.loadingFolder")}</DialogDescription>
           </DialogHeader>
         </DialogContent>
       </Dialog>
       <Dialog open={isMoving} onOpenChange={() => {}}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>移動中</DialogTitle>
-            <DialogDescription>ファイルを移動しています...</DialogDescription>
+            <DialogTitle>{t("common.moving")}</DialogTitle>
+            <DialogDescription>{t("player.movingFiles")}</DialogDescription>
           </DialogHeader>
         </DialogContent>
       </Dialog>
@@ -485,8 +499,8 @@ export function PlayerView() {
       />
       <Tabs value={activeContentTab} onValueChange={(value) => setActiveContentTab(value as ContentTab)} className="flex flex-col h-screen">
         <TabsList className="shrink-0 rounded-none border-b px-2 w-full justify-start h-8">
-          <TabsTrigger value="player" className="flex-none"><Play />プレイヤー</TabsTrigger>
-          <TabsTrigger value="settings" className="flex-none"><Settings />設定</TabsTrigger>
+          <TabsTrigger value="player" className="flex-none"><Play />{t("tabs.player")}</TabsTrigger>
+          <TabsTrigger value="settings" className="flex-none"><Settings />{t("tabs.settings")}</TabsTrigger>
         </TabsList>
         <TabsContent value="player" keepMounted className="flex flex-col flex-1 overflow-hidden mt-0">
           <Header
@@ -534,7 +548,7 @@ export function PlayerView() {
                 onPointerDown={handleSidebarResizeStart}
                 role="separator"
                 aria-orientation="vertical"
-                aria-label="サイドバー幅"
+                aria-label={t("player.sidebarWidth")}
               />
             )}
             <div className="w-px shrink-0 bg-border" />
@@ -563,9 +577,11 @@ export function PlayerView() {
             goodFolderName={goodFolderName}
             badFolderName={badFolderName}
             syncToggle={syncToggle}
+            language={language}
             onGoodFolderNameChange={handleGoodFolderNameChange}
             onBadFolderNameChange={handleBadFolderNameChange}
             onSyncToggleChange={handleSyncToggleChange}
+            onLanguageChange={handleLanguageChange}
           />
         </TabsContent>
       </Tabs>
