@@ -178,12 +178,11 @@ const SIDECAR_SUFFIXES = [".txt", ".lyrics.txt", ".json"];
 /** 付随ファイルのパス一覧を返す（存在するものだけ） */
 async function existingSidecars(folderPath: string, audioName: string): Promise<string[]> {
   const base = audioName.replace(/\.[^.]+$/, "");
-  const result: string[] = [];
-  for (const suffix of SIDECAR_SUFFIXES) {
+  const candidates = await Promise.all(SIDECAR_SUFFIXES.map(async (suffix) => {
     const p = await join(folderPath, base + suffix);
-    if (await exists(p)) result.push(p);
-  }
-  return result;
+    return (await exists(p)) ? p : null;
+  }));
+  return candidates.filter((p): p is string => p !== null);
 }
 
 export async function moveRatedFiles(
@@ -198,11 +197,10 @@ export async function moveRatedFiles(
   const destDir = await join(folderPath, subFolderName);
 
   // 衝突チェック（音声ファイル本体のみ。サイドカーは上書き許容）
-  const conflicts: string[] = [];
-  for (const t of targets) {
+  const conflicts = (await Promise.all(targets.map(async (t) => {
     const destPath = await join(destDir, t.name);
-    if (await exists(destPath)) conflicts.push(t.name);
-  }
+    return (await exists(destPath)) ? t.name : null;
+  }))).filter((name): name is string => name !== null);
   if (conflicts.length > 0) return { ok: false, conflicts };
 
   // サブフォルダ作成（なければ）
@@ -238,7 +236,5 @@ export async function moveRatedFiles(
   const remaining = tracks.filter((t) => !(rating === "good" ? t.good : t.bad));
   await saveMtdt(folderPath, remaining);
 
-  // 元フォルダをリロード
-  const reloadedTracks = await scanFolder(folderPath);
-  return { ok: true, reloadedTracks };
+  return { ok: true, reloadedTracks: remaining };
 }
