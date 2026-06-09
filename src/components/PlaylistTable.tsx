@@ -8,8 +8,8 @@ import {
   SortingState,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useState, forwardRef, useEffect, useRef, useMemo, useCallback } from "react";
-import { Star, ThumbsDown } from "lucide-react";
+import { useState, forwardRef, useEffect, useRef, useMemo, useCallback, useDeferredValue } from "react";
+import { ThumbsUp, ThumbsDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -38,7 +38,7 @@ const columns = [
     size: 32,
     cell: (info) => {
       const { good, bad } = info.row.original;
-      if (good) return <Star className="w-3.5 h-3.5 shrink-0" />;
+      if (good) return <ThumbsUp className="w-3.5 h-3.5 shrink-0" />;
       if (bad)  return <ThumbsDown className="w-3.5 h-3.5 shrink-0" />;
       return null;
     },
@@ -78,6 +78,7 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
   onVisibleIndicesChange,
 }, ref) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const containerRef = useRef<HTMLDivElement>(null);
   const originalIndexMap = useMemo(() => new Map(tracks.map((track, index) => [track, index])), [tracks]);
   const setContainerRef = useCallback((node: HTMLDivElement | null) => {
@@ -92,7 +93,7 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
   const table = useReactTable({
     data: tracks,
     columns,
-    state: { sorting, globalFilter: searchQuery },
+    state: { sorting, globalFilter: deferredSearchQuery },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

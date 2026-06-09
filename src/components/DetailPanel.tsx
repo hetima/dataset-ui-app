@@ -1,7 +1,7 @@
 import { Track } from "@/types";
 import { formatSize, formatDuration } from "@/lib/audio";
 import { Button } from "@/components/ui/button";
-import { Star, ThumbsDown } from "lucide-react";
+import { ThumbsUp, ThumbsDown } from "lucide-react";
 
 type Props = {
   track: Track | null;
@@ -27,7 +27,7 @@ export function DetailPanel({ track, onSetGood, onSetBad }: Props) {
           onClick={onSetGood}
           title="Good"
         >
-          <Star className="w-4 h-4" />
+          <ThumbsUp className="w-4 h-4" />
         </Button>
         <Button
           variant={track.bad ? "default" : "ghost"}

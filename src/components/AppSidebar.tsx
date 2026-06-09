@@ -1,5 +1,5 @@
 import { useState, forwardRef } from "react";
-import { FolderOpen, Clock8, Star, ThumbsDown, Settings } from "lucide-react";
+import { FolderOpen, Clock8, ThumbsUp, ThumbsDown, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Track } from "@/types";
 import { FolderLibrary } from "./sidebar/FolderLibrary";
@@ -13,7 +13,7 @@ type SidebarMode = "icon" | "open";
 const TABS: { id: TabId; icon: React.ReactNode; title: string }[] = [
   { id: "library",  icon: <FolderOpen className="w-4 h-4" />,  title: "フォルダライブラリ" },
   { id: "recent",   icon: <Clock8 className="w-4 h-4" />,      title: "最近使ったフォルダ" },
-  { id: "good",     icon: <Star className="w-4 h-4" />,        title: "Good" },
+  { id: "good",     icon: <ThumbsUp className="w-4 h-4" />,        title: "Good" },
   { id: "bad",      icon: <ThumbsDown className="w-4 h-4" />,  title: "Bad" },
   { id: "settings", icon: <Settings className="w-4 h-4" />,    title: "設定" },
 ];
