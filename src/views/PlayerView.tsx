@@ -16,7 +16,7 @@ import "../App.css";
 
 const appWindow = getCurrentWebviewWindow();
 const SIDEBAR_MIN_WIDTH = 160;
-const SIDEBAR_MAX_WIDTH = 420;
+const SIDEBAR_MAX_WIDTH = 480;
 
 export function PlayerView() {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -508,6 +508,7 @@ export function PlayerView() {
             aria-label="サイドバー幅"
           />
         )}
+        <div className="w-px shrink-0 bg-border" />
         <PlaylistTable
           tracks={state.tracks}
           currentIndex={state.currentIndex}

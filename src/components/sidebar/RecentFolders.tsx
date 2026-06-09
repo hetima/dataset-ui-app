@@ -1,4 +1,4 @@
-import { FolderOpen } from "lucide-react";
+import { Folder } from "lucide-react";
 
 type Props = {
   folders: string[];
@@ -23,10 +23,10 @@ export function RecentFolders({ folders, onLoad }: Props) {
       {folders.map((f) => (
         <li
           key={f}
-          className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm truncate"
+          className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent cursor-pointer text-sm truncate"
           onClick={() => onLoad(f)}
         >
-          <FolderOpen className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+          <Folder className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
           <span className="truncate">{folderName(f)}</span>
         </li>
       ))}

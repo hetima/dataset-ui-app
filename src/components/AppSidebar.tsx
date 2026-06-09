@@ -1,5 +1,5 @@
 import { useState, forwardRef } from "react";
-import { FolderOpen, Clock8, ThumbsUp, ThumbsDown, Settings } from "lucide-react";
+import { FolderBookmark, Clock8, ThumbsUp, ThumbsDown, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Track } from "@/types";
 import { FolderLibrary } from "./sidebar/FolderLibrary";
@@ -11,7 +11,7 @@ type TabId = "library" | "recent" | "good" | "bad" | "settings";
 type SidebarMode = "icon" | "open";
 
 const TABS: { id: TabId; icon: React.ReactNode; title: string }[] = [
-  { id: "library",  icon: <FolderOpen className="w-4 h-4" />,  title: "フォルダライブラリ" },
+  { id: "library",  icon: <FolderBookmark className="w-4 h-4" />,  title: "フォルダライブラリ" },
   { id: "recent",   icon: <Clock8 className="w-4 h-4" />,      title: "最近使ったフォルダ" },
   { id: "good",     icon: <ThumbsUp className="w-4 h-4" />,        title: "Good" },
   { id: "bad",      icon: <ThumbsDown className="w-4 h-4" />,  title: "Bad" },
@@ -79,11 +79,14 @@ export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar(
   return (
     <div
       ref={ref}
-      className="flex shrink-0 border-r bg-background overflow-hidden"
+      className="flex shrink-0 bg-background overflow-hidden"
       style={{ width: isOpen ? `${openWidth}px` : "2.5rem" }}
     >
       {/* タブボタン縦列 */}
-      <div className="flex flex-col items-center gap-0.5 py-1 shrink-0" style={{ width: "2.5rem" }}>
+      <div
+        className={`flex flex-col items-center gap-0.5 py-1 shrink-0 ${isOpen ? "border-r" : ""}`}
+        style={{ width: "2.5rem" }}
+      >
         {TABS.map(({ id, icon, title }) => (
           <Button
             key={id}

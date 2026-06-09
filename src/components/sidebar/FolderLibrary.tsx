@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
-import { ChevronDown, ChevronRight, FolderOpen, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, RefreshCw, Trash2 } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -59,7 +59,7 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
       <ContextMenu>
         <ContextMenuTrigger render={<div />}>
           <div
-            className="flex items-center gap-1 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm truncate w-full"
+            className="flex items-center gap-1 px-2 py-1.5 hover:bg-accent cursor-pointer text-sm truncate w-full"
             style={{ paddingLeft: `${8 + depth * 14}px` }}
             onClick={() => onLoad(path)}
           >
@@ -78,7 +78,7 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
             ) : (
               <span className="w-4 h-4 shrink-0" />
             )}
-            <FolderOpen className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+            <Folder className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
             <span className="truncate">{folderName(path)}</span>
           </div>
         </ContextMenuTrigger>

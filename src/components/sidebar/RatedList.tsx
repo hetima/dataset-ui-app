@@ -40,7 +40,7 @@ export function RatedList({ tracks, currentIndex, allTracks, subFolderName, onSe
             return (
               <li
                 key={t.path}
-                className={`px-2 py-1.5 rounded-md cursor-pointer text-sm truncate hover:bg-accent ${isCurrent ? "bg-primary/20 font-semibold" : ""}`}
+                className={`px-2 py-1.5 cursor-pointer text-sm truncate hover:bg-accent ${isCurrent ? "bg-primary/20 font-semibold" : ""}`}
                 onClick={() => onSelect(originalIndex)}
               >
                 {t.name}
