@@ -3,19 +3,12 @@ import { join } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
 import { Track } from "../types";
 
-// mtdt.json の1レコード型（既知フィールドのみ）
-type MtdtRecord = {
-  filename: string;
-  transcript?: string;
-  good?: boolean;
-  bad?: boolean;
-  duration?: number;
-  [key: string]: unknown;
-};
-
 // songs キーの1レコード型
 type SongRecord = {
   filename?: string;
+  transcript?: string;
+  good?: boolean;
+  bad?: boolean;
   lyrics?: string;
   draft_lyrics?: string;
   synced_lyrics?: string;
@@ -27,10 +20,9 @@ type SongRecord = {
   [key: string]: unknown;
 };
 
-// 新形式: audiofiles は filename をキーとした辞書
+// mtdt.json: songs は filename をキーとした辞書（audiofiles 等の他キーは管理外として温存）
 type MtdtFile = {
-  audiofiles?: Record<string, MtdtRecord> | MtdtRecord[]; // 旧形式(配列)との互換のためunion
-  songs?: Record<string, SongRecord> | SongRecord[]; // audiofiles と同じ形式
+  songs?: Record<string, SongRecord> | SongRecord[]; // 旧形式(配列)との互換のためunion
   [key: string]: unknown;
 };
 
@@ -46,28 +38,15 @@ function parseSongs(songs: MtdtFile["songs"]): Map<string, SongRecord> {
   return map;
 }
 
-/** mtdt.json の audiofiles を filename キーの Map に正規化して返す */
-function parseAudiofiles(audiofiles: MtdtFile["audiofiles"]): Map<string, MtdtRecord> {
-  const map = new Map<string, MtdtRecord>();
-  if (!audiofiles) return map;
-  if (Array.isArray(audiofiles)) {
-    // 旧形式(配列)を辞書に変換
-    for (const r of audiofiles) map.set(r.filename, r);
-  } else {
-    for (const [k, v] of Object.entries(audiofiles)) map.set(k, v as MtdtRecord);
-  }
-  return map;
-}
-
-/** mtdt.json を読み込んで filename をキーとしたマップを返す */
-export async function loadMtdt(folderPath: string): Promise<{ map: Map<string, MtdtRecord>; songsMap: Map<string, SongRecord>; raw: MtdtFile }> {
+/** mtdt.json を読み込んで filename をキーとした songs マップを返す */
+export async function loadMtdt(folderPath: string): Promise<{ songsMap: Map<string, SongRecord>; raw: MtdtFile }> {
   const mtdtPath = await join(folderPath, "mtdt.json");
   try {
     const text = await readTextFile(mtdtPath);
     const raw: MtdtFile = JSON.parse(text);
-    return { map: parseAudiofiles(raw.audiofiles), songsMap: parseSongs(raw.songs), raw };
+    return { songsMap: parseSongs(raw.songs), raw };
   } catch {
-    return { map: new Map(), songsMap: new Map(), raw: {} };
+    return { songsMap: new Map(), raw: {} };
   }
 }
 
@@ -81,13 +60,13 @@ export async function saveMtdt(folderPath: string, tracks: Track[]): Promise<voi
     raw = JSON.parse(text);
   } catch { /* 存在しない場合は新規作成 */ }
 
-  const existingMap = parseAudiofiles(raw.audiofiles);
+  const existingMap = parseSongs(raw.songs);
 
   // 現在のトラック一覧で辞書を生成（存在しないファイルは除外）
-  const audiofiles: Record<string, MtdtRecord> = {};
+  const songs: Record<string, SongRecord> = {};
   for (const t of tracks) {
     const existing = existingMap.get(t.name) ?? { filename: t.name };
-    audiofiles[t.name] = {
+    songs[t.name] = {
       ...existing,
       filename: t.name,
       good: t.good,
@@ -97,7 +76,7 @@ export async function saveMtdt(folderPath: string, tracks: Track[]): Promise<voi
     };
   }
 
-  const output: MtdtFile = { ...raw, audiofiles };
+  const output: MtdtFile = { ...raw, songs };
   await writeTextFile(mtdtPath, JSON.stringify(output, null, 2));
 }
 
@@ -143,20 +122,16 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
   tracks.sort((a, b) => a.name.localeCompare(b.name));
 
   // mtdt.json を読み込んでメタデータを反映
-  const { map: mtdtMap, songsMap } = await loadMtdt(folderPath);
+  const { songsMap } = await loadMtdt(folderPath);
 
   const transcriptFallbackTargets: Track[] = [];
   for (const track of tracks) {
-    const rec = mtdtMap.get(track.name);
-    if (rec) {
-      track.good = rec.good ?? false;
-      track.bad = rec.bad ?? false;
-      track.duration = rec.duration ?? 0;
-      track.transcript = rec.transcript ?? "";
-    }
-
     const song = songsMap.get(track.name);
     if (song) {
+      track.good = song.good ?? false;
+      track.bad = song.bad ?? false;
+      track.duration = song.duration ?? 0;
+      track.transcript = song.transcript ?? "";
       track.lyrics = song.lyrics ?? "";
       track.draftLyrics = song.draft_lyrics ?? "";
       track.syncedLyrics = song.synced_lyrics ?? "";
@@ -164,7 +139,6 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       track.title = song.title ?? "";
       track.album = song.album ?? "";
       track.artist = song.artist ?? "";
-      if (song.duration) track.duration = song.duration;
     }
 
     if (!track.transcript) {
@@ -281,11 +255,12 @@ export async function moveRatedFiles(
   }
 
   // 移動先 mtdt.json にマージ保存
-  const { map: destMap, raw: destRaw } = await loadMtdt(destDir);
-  const destAudiofiles: Record<string, object> = { ...(destRaw.audiofiles as object ?? {}) };
+  const { songsMap: destSongs, raw: destRaw } = await loadMtdt(destDir);
+  const destSongsOut: Record<string, SongRecord> = {};
+  for (const [k, v] of destSongs) destSongsOut[k] = v;
   for (const t of targets) {
-    const existing = destMap.get(t.name) ?? { filename: t.name };
-    destAudiofiles[t.name] = {
+    const existing = destSongs.get(t.name) ?? { filename: t.name };
+    destSongsOut[t.name] = {
       ...existing,
       filename: t.name,
       good: t.good,
@@ -295,7 +270,7 @@ export async function moveRatedFiles(
     };
   }
   const destMtdtPath = await join(destDir, "mtdt.json");
-  await writeTextFile(destMtdtPath, JSON.stringify({ ...destRaw, audiofiles: destAudiofiles }, null, 2));
+  await writeTextFile(destMtdtPath, JSON.stringify({ ...destRaw, songs: destSongsOut }, null, 2));
 
   // 元フォルダの mtdt.json から移動済みレコードを除いて保存
   const remaining = tracks.filter((t) => !(rating === "good" ? t.good : t.bad));
