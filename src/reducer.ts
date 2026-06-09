@@ -35,6 +35,13 @@ export function reducer(state: State, action: Action): State {
           i === action.index ? { ...t, duration: action.duration } : t
         ),
       };
+    case "UPDATE_SIZE":
+      return {
+        ...state,
+        tracks: state.tracks.map((t, i) =>
+          i === action.index ? { ...t, size: action.size } : t
+        ),
+      };
     case "SET_GOOD":
       return {
         ...state,

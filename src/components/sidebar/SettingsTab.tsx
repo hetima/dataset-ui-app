@@ -1,9 +1,11 @@
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 const SHORTCUTS = [
   { key: "スペース", desc: "再生 / 一時停止" },
   { key: "↑ / ↓", desc: "前後のトラックに移動" },
-  { key: "← /F / G", desc: "Good をトグル" },
+  { key: "← / →", desc: "Good / Bad をトグル\n同期トグルをオンにすると挙動が変わります" },
+  { key: "← / G", desc: "Good をトグル" },
   { key: "→ / B", desc: "Bad をトグル" },
   { key: "Del / Backspace / H / C", desc: "Good・Bad をクリア" },
   { key: "L", desc: "再生モードを切り替え（連続 / 1曲 / 通常）" },
@@ -15,11 +17,13 @@ const SHORTCUTS = [
 type Props = {
   goodFolderName: string;
   badFolderName: string;
+  syncToggle: boolean;
   onGoodFolderNameChange: (name: string) => void;
   onBadFolderNameChange: (name: string) => void;
+  onSyncToggleChange: (v: boolean) => void;
 };
 
-export function SettingsTab({ goodFolderName, badFolderName, onGoodFolderNameChange, onBadFolderNameChange }: Props) {
+export function SettingsTab({ goodFolderName, badFolderName, syncToggle, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange }: Props) {
   return (
     <div className="px-2 space-y-4">
       {/* 移動先フォルダ名設定 */}
@@ -47,6 +51,14 @@ export function SettingsTab({ goodFolderName, badFolderName, onGoodFolderNameCha
 
       <hr className="border-border/50" />
 
+      {/* 同期トグル設定 */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">← / → 同期トグル</span>
+        <Switch checked={syncToggle} onCheckedChange={onSyncToggleChange} />
+      </div>
+
+      <hr className="border-border/50" />
+
       {/* ショートカットキー */}
       <div className="space-y-0">
         <p className="text-xs font-semibold text-muted-foreground mb-3">ショートカットキー</p>
@@ -54,7 +66,7 @@ export function SettingsTab({ goodFolderName, badFolderName, onGoodFolderNameCha
           <div key={key}>
             <div className="py-2">
               <p className="text-xs font-mono font-semibold text-foreground">{key}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-line">{desc}</p>
             </div>
             {i < SHORTCUTS.length - 1 && <hr className="border-border/50" />}
           </div>

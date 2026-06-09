@@ -9,7 +9,7 @@ export class AppSettings {
 
   static async load(): Promise<AppSettings> {
     const store = await load(STORE_PATH, {
-      defaults: { volume: 1, folderLibrary: [], recentFolders: [], goodFolderName: "good", badFolderName: "bad", playMode: "stop" },
+      defaults: { volume: 1, folderLibrary: [], recentFolders: [], goodFolderName: "good", badFolderName: "bad", playMode: "stop", syncToggle: false },
       autoSave: false,
     });
     return new AppSettings(store);
@@ -43,6 +43,15 @@ export class AppSettings {
 
   async setPlayMode(mode: string): Promise<void> {
     await this.store.set("playMode", mode);
+    await this.store.save();
+  }
+
+  async getSyncToggle(): Promise<boolean> {
+    return (await this.store.get<boolean>("syncToggle")) ?? false;
+  }
+
+  async setSyncToggle(v: boolean): Promise<void> {
+    await this.store.set("syncToggle", v);
     await this.store.save();
   }
 

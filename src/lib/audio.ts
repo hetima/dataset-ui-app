@@ -94,12 +94,11 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
   for (const entry of entries) {
     if (!entry.isFile || !isAudioFile(entry.name)) continue;
     const entryPath = await join(folderPath, entry.name);
-    const info = await stat(entryPath);
     tracks.push({
       path: entryPath,
       name: entry.name,
       duration: 0,
-      size: info.size,
+      size: null,
       good: false,
       bad: false,
       transcript: "",
@@ -133,6 +132,11 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
   }
 
   return tracks;
+}
+
+/** ファイルサイズを取得する */
+export async function getFileSize(path: string): Promise<number> {
+  return (await stat(path)).size;
 }
 
 

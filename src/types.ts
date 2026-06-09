@@ -2,7 +2,7 @@ export type Track = {
   path: string;
   name: string;
   duration: number; // 秒
-  size: number;     // バイト
+  size: number | null; // バイト。未取得の場合は null
   good: boolean;
   bad: boolean;
   transcript: string;
@@ -27,6 +27,7 @@ export type Action =
   | { type: "SET_PLAY_MODE"; mode: PlayMode }
   | { type: "SET_SEARCH"; query: string }
   | { type: "UPDATE_DURATION"; index: number; duration: number }
+  | { type: "UPDATE_SIZE"; index: number; size: number }
   | { type: "SET_GOOD"; index: number }
   | { type: "SET_BAD"; index: number }
   | { type: "CLEAR_RATING"; index: number };

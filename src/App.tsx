@@ -4,7 +4,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { AppSettings } from "./lib/settings";
 import { reducer, initialState } from "./reducer";
 import { PlayMode } from "./types";
-import { scanFolder, saveMtdt, moveRatedFiles } from "./lib/audio";
+import { scanFolder, saveMtdt, moveRatedFiles, getFileSize } from "./lib/audio";
 import { Header } from "./components/Header";
 import { AppSidebar } from "./components/AppSidebar";
 import { PlaylistTable } from "./components/PlaylistTable";
@@ -26,6 +26,7 @@ export default function App() {
   const [recentFolders, setRecentFolders] = useState<string[]>([]);
   const [goodFolderName, setGoodFolderName] = useState("good");
   const [badFolderName, setBadFolderName] = useState("bad");
+  const [syncToggle, setSyncToggle] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<"icon" | "open">("icon");
   const [showDetailPanel, setShowDetailPanel] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +35,9 @@ export default function App() {
   const currentFolderRef = useRef<string | null>(null);
   const tracksRef = useRef(state.tracks);
   const visibleTrackIndicesRef = useRef<number[]>([]);
+  const syncToggleRef = useRef(syncToggle);
   tracksRef.current = state.tracks;
+  syncToggleRef.current = syncToggle;
 
   const getAdjacentVisibleIndex = useCallback((currentIndex: number | null, direction: -1 | 1) => {
     const visibleIndices = visibleTrackIndicesRef.current;
@@ -60,6 +63,7 @@ export default function App() {
       setRecentFolders(await settings.getRecentFolders());
       setGoodFolderName(await settings.getGoodFolderName());
       setBadFolderName(await settings.getBadFolderName());
+      setSyncToggle(await settings.getSyncToggle());
       const savedPlayMode = await settings.getPlayMode();
       dispatch({ type: "SET_PLAY_MODE", mode: savedPlayMode as PlayMode });
       settingsLoadedRef.current = true;
@@ -94,6 +98,12 @@ export default function App() {
     setBadFolderName(name);
     const settings = await AppSettings.load();
     await settings.setBadFolderName(name);
+  }, []);
+
+  const handleSyncToggleChange = useCallback(async (v: boolean) => {
+    setSyncToggle(v);
+    const settings = await AppSettings.load();
+    await settings.setSyncToggle(v);
   }, []);
 
   // playMode 変化時に設定保存（設定ロード完了後のみ）
@@ -312,7 +322,7 @@ export default function App() {
         const next = getAdjacentVisibleIndex(state.currentIndex, 1);
         dispatch({ type: "SET_CURRENT", index: next });
       }
-      if ((e.code === "KeyF" || e.code === "KeyG") && !e.ctrlKey && state.currentIndex !== null) {
+      if (e.code === "KeyG" && state.currentIndex !== null) {
         dispatch({ type: "SET_GOOD", index: state.currentIndex });
       }
       if (e.code === "KeyB" && state.currentIndex !== null) {
@@ -324,12 +334,26 @@ export default function App() {
       if (e.code === "ArrowLeft" && state.currentIndex !== null) {
         e.preventDefault();
         e.stopPropagation();
-        dispatch({ type: "SET_GOOD", index: state.currentIndex });
+        if (syncToggleRef.current) {
+          const t = tracksRef.current[state.currentIndex];
+          if (t.good) { /* good付きはそのまま */ }
+          else if (t.bad) { dispatch({ type: "CLEAR_RATING", index: state.currentIndex }); }
+          else { dispatch({ type: "SET_GOOD", index: state.currentIndex }); }
+        } else {
+          dispatch({ type: "SET_GOOD", index: state.currentIndex });
+        }
       }
       if (e.code === "ArrowRight" && state.currentIndex !== null) {
         e.preventDefault();
         e.stopPropagation();
-        dispatch({ type: "SET_BAD", index: state.currentIndex });
+        if (syncToggleRef.current) {
+          const t = tracksRef.current[state.currentIndex];
+          if (t.bad) { /* bad付きはそのまま */ }
+          else if (t.good) { dispatch({ type: "CLEAR_RATING", index: state.currentIndex }); }
+          else { dispatch({ type: "SET_BAD", index: state.currentIndex }); }
+        } else {
+          dispatch({ type: "SET_BAD", index: state.currentIndex });
+        }
       }
       if ((e.code === "Delete" || e.code === "Backspace" || e.code === "KeyH" || e.code === "KeyC") && state.currentIndex !== null) {
         dispatch({ type: "CLEAR_RATING", index: state.currentIndex });
@@ -355,6 +379,21 @@ export default function App() {
   const nowPlayingFolder = currentTrack
     ? `${currentTrack.path.replace(/\\/g, "/").split("/").slice(0, -1).pop() ?? ""} (${state.tracks.length}項目)`
     : null;
+
+  // 詳細パネル用のファイルサイズは選択時に取得する
+  useEffect(() => {
+    if (state.currentIndex === null) return;
+    const index = state.currentIndex;
+    const track = state.tracks[index];
+    if (!track || track.size !== null) return;
+    let cancelled = false;
+    getFileSize(track.path)
+      .then((size) => {
+        if (!cancelled) dispatch({ type: "UPDATE_SIZE", index, size });
+      })
+      .catch((e) => console.error("getFileSize failed:", e));
+    return () => { cancelled = true; };
+  }, [state.currentIndex, state.tracks]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -413,6 +452,8 @@ export default function App() {
           onMoveBad={() => handleMoveRated("bad")}
           onGoodFolderNameChange={handleGoodFolderNameChange}
           onBadFolderNameChange={handleBadFolderNameChange}
+          syncToggle={syncToggle}
+          onSyncToggleChange={handleSyncToggleChange}
         />
         <PlaylistTable
           tracks={state.tracks}

@@ -44,7 +44,7 @@ export function DetailPanel({ track, onSetGood, onSetBad }: Props) {
       </div>
       <div>
         <p className="text-xs text-muted-foreground">サイズ</p>
-        <p>{formatSize(track.size)}</p>
+        <p>{track.size === null ? "取得中..." : formatSize(track.size)}</p>
       </div>
       <div>
         <p className="text-xs text-muted-foreground">再生時間</p>

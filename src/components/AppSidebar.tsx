@@ -34,6 +34,8 @@ type Props = {
   onMoveBad: () => void;
   onGoodFolderNameChange: (name: string) => void;
   onBadFolderNameChange: (name: string) => void;
+  syncToggle: boolean;
+  onSyncToggleChange: (v: boolean) => void;
 };
 
 export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar({
@@ -52,6 +54,8 @@ export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar(
   onMoveBad,
   onGoodFolderNameChange,
   onBadFolderNameChange,
+  syncToggle,
+  onSyncToggleChange,
 }: Props, ref: React.ForwardedRef<HTMLDivElement>) {
   const [activeTab, setActiveTab] = useState<TabId>("library");
   const isOpen = mode === "open";
@@ -129,8 +133,10 @@ export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar(
             <SettingsTab
               goodFolderName={goodFolderName}
               badFolderName={badFolderName}
+              syncToggle={syncToggle}
               onGoodFolderNameChange={onGoodFolderNameChange}
               onBadFolderNameChange={onBadFolderNameChange}
+              onSyncToggleChange={onSyncToggleChange}
             />
           )}
         </div>
