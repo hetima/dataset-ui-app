@@ -24,6 +24,7 @@ type Props = {
   folderLibrary: string[];
   recentFolders: string[];
   mode: SidebarMode;
+  openWidth: number;
   goodFolderName: string;
   badFolderName: string;
   onModeChange: (mode: SidebarMode) => void;
@@ -44,6 +45,7 @@ export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar(
   folderLibrary,
   recentFolders,
   mode,
+  openWidth,
   goodFolderName,
   badFolderName,
   onModeChange,
@@ -77,8 +79,8 @@ export const AppSidebar = forwardRef<HTMLDivElement, Props>(function AppSidebar(
   return (
     <div
       ref={ref}
-      className="flex shrink-0 border-r bg-background overflow-hidden transition-all duration-200"
-      style={{ width: isOpen ? "14rem" : "2.5rem" }}
+      className="flex shrink-0 border-r bg-background overflow-hidden"
+      style={{ width: isOpen ? `${openWidth}px` : "2.5rem" }}
     >
       {/* タブボタン縦列 */}
       <div className="flex flex-col items-center gap-0.5 py-1 shrink-0" style={{ width: "2.5rem" }}>

@@ -1,4 +1,5 @@
 import { useReducer, useRef, useEffect, useCallback, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { toast } from "sonner";
@@ -14,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import "../App.css";
 
 const appWindow = getCurrentWebviewWindow();
+const SIDEBAR_MIN_WIDTH = 160;
+const SIDEBAR_MAX_WIDTH = 420;
 
 export function PlayerView() {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -29,6 +32,7 @@ export function PlayerView() {
   const [badFolderName, setBadFolderName] = useState("bad");
   const [syncToggle, setSyncToggle] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<"icon" | "open">("icon");
+  const [sidebarWidth, setSidebarWidth] = useState(224);
   const [showDetailPanel, setShowDetailPanel] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
@@ -37,8 +41,12 @@ export function PlayerView() {
   const tracksRef = useRef(state.tracks);
   const visibleTrackIndicesRef = useRef<number[]>([]);
   const syncToggleRef = useRef(syncToggle);
+  const sidebarModeRef = useRef(sidebarMode);
+  const sidebarWidthRef = useRef(sidebarWidth);
   tracksRef.current = state.tracks;
   syncToggleRef.current = syncToggle;
+  sidebarModeRef.current = sidebarMode;
+  sidebarWidthRef.current = sidebarWidth;
 
   const getAdjacentVisibleIndex = useCallback((currentIndex: number | null, direction: -1 | 1) => {
     const visibleIndices = visibleTrackIndicesRef.current;
@@ -54,6 +62,25 @@ export function PlayerView() {
     visibleTrackIndicesRef.current = indices;
   }, []);
 
+  const handleSidebarResizeStart = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    if (sidebarMode !== "open") return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const nextWidth = startWidth + event.clientX - startX;
+      setSidebarWidth(Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, nextWidth)));
+    };
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  }, [sidebarMode, sidebarWidth]);
+
   // 起動時に設定を復帰
   useEffect(() => {
     AppSettings.load().then(async ({ playerView }) => {
@@ -65,6 +92,13 @@ export function PlayerView() {
       setGoodFolderName(await playerView.getGoodFolderName());
       setBadFolderName(await playerView.getBadFolderName());
       setSyncToggle(await playerView.getSyncToggle());
+      const savedSidebarWidth = await playerView.getSidebarWidth();
+      if (savedSidebarWidth > 0) {
+        setSidebarWidth(Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, savedSidebarWidth)));
+        setSidebarMode("open");
+      } else {
+        setSidebarMode("icon");
+      }
       const savedPlayMode = await playerView.getPlayMode();
       dispatch({ type: "SET_PLAY_MODE", mode: savedPlayMode as PlayMode });
       settingsLoadedRef.current = true;
@@ -140,6 +174,10 @@ export function PlayerView() {
   useEffect(() => {
     const promise = appWindow.onCloseRequested(async () => {
       await saveCurrentFolder();
+      const settings = await AppSettings.load();
+      await settings.playerView.setSidebarWidth(
+        sidebarModeRef.current === "open" ? sidebarWidthRef.current : 0
+      );
     });
     return () => { promise.then((fn) => fn()); };
   }, [saveCurrentFolder]);
@@ -447,6 +485,7 @@ export function PlayerView() {
           folderLibrary={folderLibrary}
           recentFolders={recentFolders}
           mode={sidebarMode}
+          openWidth={sidebarWidth}
           goodFolderName={goodFolderName}
           badFolderName={badFolderName}
           onModeChange={setSidebarMode}
@@ -460,6 +499,15 @@ export function PlayerView() {
           syncToggle={syncToggle}
           onSyncToggleChange={handleSyncToggleChange}
         />
+        {sidebarMode === "open" && (
+          <div
+            className="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-border"
+            onPointerDown={handleSidebarResizeStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="サイドバー幅"
+          />
+        )}
         <PlaylistTable
           tracks={state.tracks}
           currentIndex={state.currentIndex}

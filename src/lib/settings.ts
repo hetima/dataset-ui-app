@@ -11,6 +11,7 @@ const PLAYER_VIEW_KEYS = {
   badFolderName: "playerview.badFolderName",
   playMode: "playerview.playMode",
   syncToggle: "playerview.syncToggle",
+  sidebarWidth: "playerview.sidebarWidth",
 } as const;
 
 /** アプリ設定の読み書きを担当するクラス */
@@ -31,6 +32,7 @@ export class AppSettings {
         [PLAYER_VIEW_KEYS.badFolderName]: "bad",
         [PLAYER_VIEW_KEYS.playMode]: "stop",
         [PLAYER_VIEW_KEYS.syncToggle]: false,
+        [PLAYER_VIEW_KEYS.sidebarWidth]: 0,
       },
       autoSave: false,
     });
@@ -79,6 +81,15 @@ export class PlayerViewSettings {
 
   async setSyncToggle(v: boolean): Promise<void> {
     await this.store.set(PLAYER_VIEW_KEYS.syncToggle, v);
+    await this.store.save();
+  }
+
+  async getSidebarWidth(): Promise<number> {
+    return (await this.store.get<number>(PLAYER_VIEW_KEYS.sidebarWidth)) ?? 0;
+  }
+
+  async setSidebarWidth(width: number): Promise<void> {
+    await this.store.set(PLAYER_VIEW_KEYS.sidebarWidth, width);
     await this.store.save();
   }
 
