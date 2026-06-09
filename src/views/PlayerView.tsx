@@ -1,6 +1,7 @@
 import { useReducer, useRef, useEffect, useCallback, useState } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { toast } from "sonner";
 import { AppSettings } from "../lib/settings";
 import { reducer, initialState } from "../reducer";
 import { PlayMode } from "../types";
@@ -84,7 +85,9 @@ export function PlayerView() {
       await saveMtdt(currentFolderRef.current, tracksRef.current).catch((e) =>
         console.error("saveMtdt failed:", e)
       );
+      return true;
     }
+    return false;
   }, []);
 
   // good/bad フォルダ名の変更を保存
@@ -291,7 +294,9 @@ export function PlayerView() {
       if (e.code === "KeyS" && e.ctrlKey) {
         e.preventDefault();
         e.stopPropagation();
-        saveCurrentFolder();
+        saveCurrentFolder().then((saved) => {
+          if (saved) toast.success("保存しました");
+        });
         return;
       }
       if (e.code === "KeyF" && e.ctrlKey) {
