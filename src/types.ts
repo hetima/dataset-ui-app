@@ -23,6 +23,7 @@ export type State = {
   isPlaying: boolean;
   playMode: PlayMode;
   searchQuery: string;
+  songInfoTrack: Track | null; // 曲情報タブで編集中のトラック（プレイリストとは独立）
 };
 
 export type Action =
@@ -37,4 +38,6 @@ export type Action =
   | { type: "UPDATE_SIZE"; index: number; size: number }
   | { type: "SET_GOOD"; index: number }
   | { type: "SET_BAD"; index: number }
-  | { type: "CLEAR_RATING"; index: number };
+  | { type: "CLEAR_RATING"; index: number }
+  | { type: "SET_SONG_INFO_TRACK"; track: Track | null }
+  | { type: "UPDATE_LYRICS"; path: string; lyrics: string };

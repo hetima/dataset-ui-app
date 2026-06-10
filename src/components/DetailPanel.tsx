@@ -1,16 +1,17 @@
 import { Track } from "@/types";
 import { formatSize, formatDuration } from "@/lib/audio";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 type Props = {
   track: Track | null;
   onSetGood: () => void;
   onSetBad: () => void;
+  onEditSongInfo: () => void;
 };
 
-export function DetailPanel({ track, onSetGood, onSetBad }: Props) {
+export function DetailPanel({ track, onSetGood, onSetBad, onEditSongInfo }: Props) {
   const { t } = useTranslation();
 
   if (!track) {
@@ -39,6 +40,14 @@ export function DetailPanel({ track, onSetGood, onSetBad }: Props) {
           title={t("common.bad")}
         >
           <ThumbsDown className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onEditSongInfo}
+          title={t("tabs.songInfo")}
+        >
+          <Pencil className="w-4 h-4" />
         </Button>
       </div>
       <div>

@@ -22,7 +22,17 @@ const resources = {
       },
       tabs: {
         player: "プレイヤー",
+        songInfo: "歌詞",
         settings: "設定",
+      },
+      songInfo: {
+        noTrack: "曲が選択されていません",
+        hint: "プレイヤーの情報パネルの編集ボタン、または単体ファイルのドロップで開けます",
+        filePath: "ファイルパス",
+        lyrics: "歌詞",
+        save: "保存",
+        saveComplete: "歌詞を保存しました",
+        saveFailed: "保存に失敗しました",
       },
       player: {
         stopped: "再生停止中",
@@ -125,7 +135,17 @@ const resources = {
       },
       tabs: {
         player: "Player",
+        songInfo: "Lyrics",
         settings: "Settings",
+      },
+      songInfo: {
+        noTrack: "No track selected",
+        hint: "Open via the edit button in the player detail panel, or drop a single file",
+        filePath: "File path",
+        lyrics: "Lyrics",
+        save: "Save",
+        saveComplete: "Lyrics saved",
+        saveFailed: "Failed to save",
       },
       player: {
         stopped: "Stopped",

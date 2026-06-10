@@ -8,6 +8,7 @@ export const initialState: State = {
   isPlaying: false,
   playMode: "continuous",
   searchQuery: "",
+  songInfoTrack: null,
 };
 
 export function reducer(state: State, action: Action): State {
@@ -62,6 +63,20 @@ export function reducer(state: State, action: Action): State {
         tracks: state.tracks.map((t, i) =>
           i === action.index ? { ...t, good: false, bad: false } : t
         ),
+      };
+    case "SET_SONG_INFO_TRACK":
+      return { ...state, songInfoTrack: action.track };
+    case "UPDATE_LYRICS":
+      // path が一致するプレイリスト内トラックと songInfoTrack の両方を同期更新
+      return {
+        ...state,
+        tracks: state.tracks.map((t) =>
+          t.path === action.path ? { ...t, lyrics: action.lyrics } : t
+        ),
+        songInfoTrack:
+          state.songInfoTrack && state.songInfoTrack.path === action.path
+            ? { ...state.songInfoTrack, lyrics: action.lyrics }
+            : state.songInfoTrack,
       };
     default:
       return state;

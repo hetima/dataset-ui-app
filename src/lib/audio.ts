@@ -80,6 +80,39 @@ export async function saveMtdt(folderPath: string, tracks: Track[]): Promise<voi
   await writeTextFile(mtdtPath, JSON.stringify(output, null, 2));
 }
 
+/**
+ * 単一ファイルの lyrics を保存する。
+ * - mtdt.json: 該当 filename レコードの lyrics のみ差し替え（他キー・他レコードは全て温存）
+ * - m4a: iTunes lyrics タグにも書き込む
+ */
+export async function saveLyrics(filePath: string, lyrics: string): Promise<void> {
+  const normalized = filePath.replace(/\\/g, "/");
+  const slash = normalized.lastIndexOf("/");
+  const folderPath = slash >= 0 ? filePath.slice(0, filePath.length - (normalized.length - slash)) : filePath;
+  const fileName = normalized.slice(slash + 1);
+
+  // mtdt.json をそのまま読み込み、該当レコードの lyrics のみ書き換える
+  const mtdtPath = await join(folderPath, "mtdt.json");
+  let raw: MtdtFile = {};
+  try {
+    raw = JSON.parse(await readTextFile(mtdtPath));
+  } catch { /* 存在しない場合は新規作成 */ }
+
+  // songs が配列形式の場合も辞書に正規化して保存する
+  const songsMap = parseSongs(raw.songs);
+  const existing = songsMap.get(fileName) ?? { filename: fileName };
+  const songs: Record<string, SongRecord> = {};
+  for (const [k, v] of songsMap) songs[k] = v;
+  songs[fileName] = { ...existing, filename: fileName, lyrics };
+
+  await writeTextFile(mtdtPath, JSON.stringify({ ...raw, songs }, null, 2));
+
+  // m4a の場合はタグにも書き込む
+  if (fileName.toLowerCase().endsWith(".m4a")) {
+    await invoke("write_m4a_lyrics", { path: filePath, lyrics });
+  }
+}
+
 const AUDIO_EXTENSIONS = new Set([
   "mp3", "m4a", "flac", "wav", "ogg", "aac", "opus",
 ]);
@@ -178,6 +211,67 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
   );
 
   return tracks;
+}
+
+/**
+ * 単一の音声ファイルパスから Track を生成する（曲情報タブ用）。
+ * mtdt.json と m4a タグからメタデータを反映する。
+ */
+export async function loadTrackFromFile(filePath: string): Promise<Track | null> {
+  const normalized = filePath.replace(/\\/g, "/");
+  const slash = normalized.lastIndexOf("/");
+  const folderPath = slash >= 0 ? filePath.slice(0, filePath.length - (normalized.length - slash)) : filePath;
+  const fileName = normalized.slice(slash + 1);
+  if (!isAudioFile(fileName)) return null;
+
+  const track: Track = {
+    path: filePath,
+    name: fileName,
+    duration: 0,
+    size: null,
+    good: false,
+    bad: false,
+    transcript: "",
+    lyrics: "",
+    draftLyrics: "",
+    syncedLyrics: "",
+    ttml: "",
+    title: "",
+    album: "",
+    artist: "",
+  };
+
+  const { songsMap } = await loadMtdt(folderPath);
+  const song = songsMap.get(fileName);
+  if (song) {
+    track.good = song.good ?? false;
+    track.bad = song.bad ?? false;
+    track.duration = song.duration ?? 0;
+    track.transcript = song.transcript ?? "";
+    track.lyrics = song.lyrics ?? "";
+    track.draftLyrics = song.draft_lyrics ?? "";
+    track.syncedLyrics = song.synced_lyrics ?? "";
+    track.ttml = song.ttml ?? "";
+    track.title = song.title ?? "";
+    track.album = song.album ?? "";
+    track.artist = song.artist ?? "";
+  }
+
+  // m4a は不足分をタグから補完
+  if (fileName.toLowerCase().endsWith(".m4a") && (!track.title || !track.album || !track.artist || !track.lyrics)) {
+    try {
+      const tags = await invoke<{ title: string | null; album: string | null; artist: string | null; lyrics: string | null }>(
+        "read_m4a_tags",
+        { path: filePath }
+      );
+      if (!track.title && tags.title) track.title = tags.title;
+      if (!track.album && tags.album) track.album = tags.album;
+      if (!track.artist && tags.artist) track.artist = tags.artist;
+      if (!track.lyrics && tags.lyrics) track.lyrics = tags.lyrics;
+    } catch { /* タグ読み取り失敗は無視 */ }
+  }
+
+  return track;
 }
 
 /** ファイルサイズを取得する */

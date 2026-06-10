@@ -10,13 +10,14 @@ import type { AppLanguage } from "../lib/i18n";
 import type { AppTheme } from "../lib/theme";
 import { reducer, initialState } from "../reducer";
 import { PlayMode } from "../types";
-import { scanFolder, saveMtdt, moveRatedFiles, getFileSize } from "../lib/audio";
-import { Play, Settings } from "lucide-react";
+import { scanFolder, saveMtdt, moveRatedFiles, getFileSize, loadTrackFromFile } from "../lib/audio";
+import { Play, Settings, Music } from "lucide-react";
 import { Header } from "../components/Header";
 import { PlayerSidebar } from "../components/PlayerSidebar";
 import { PlaylistTable } from "../components/PlaylistTable";
 import { DetailPanel } from "../components/DetailPanel";
 import { SettingsView } from "./SettingsView";
+import { SongInfoView } from "./SongInfoView";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import "../App.css";
@@ -24,7 +25,7 @@ import "../App.css";
 const appWindow = getCurrentWebviewWindow();
 const SIDEBAR_MIN_WIDTH = 160;
 const SIDEBAR_MAX_WIDTH = 480;
-type ContentTab = "player" | "settings";
+type ContentTab = "player" | "songinfo" | "settings";
 
 export function PlayerView() {
   const { t, i18n } = useTranslation();
@@ -143,6 +144,39 @@ export function PlayerView() {
     }
     return false;
   }, []);
+
+  // 情報パネルの編集ボタン → 現在トラックを曲情報タブで開く
+  const handleEditSongInfo = useCallback(() => {
+    if (state.currentIndex === null) return;
+    dispatch({ type: "SET_SONG_INFO_TRACK", track: state.tracks[state.currentIndex] });
+    setActiveContentTab("songinfo");
+  }, [state.currentIndex, state.tracks]);
+
+  // 曲情報タブで歌詞保存後、プレイリスト内の同 path トラックと同期
+  const handleLyricsSaved = useCallback((path: string, lyrics: string) => {
+    dispatch({ type: "UPDATE_LYRICS", path, lyrics });
+  }, []);
+
+  // 曲情報タブの再生ボタン
+  const handleTogglePlayForSongInfo = useCallback((track: typeof state.tracks[0]) => {
+    const currentTrackPath = state.currentIndex !== null ? state.tracks[state.currentIndex]?.path : null;
+    if (track.path === currentTrackPath) {
+      // 同じ曲 → 再生/停止トグル
+      dispatch({ type: "SET_PLAYING", playing: !state.isPlaying });
+    } else if (state.isPlaying) {
+      // 別の曲が再生中 → 停止
+      dispatch({ type: "SET_PLAYING", playing: false });
+    } else {
+      // 停止中 → この曲をプレイリストから探して再生、なければプレイリストに追加して再生
+      const idx = state.tracks.findIndex((t) => t.path === track.path);
+      if (idx >= 0) {
+        dispatch({ type: "SET_CURRENT", index: idx });
+      } else {
+        dispatch({ type: "APPEND_TRACKS", tracks: [track] });
+        dispatch({ type: "SET_CURRENT", index: state.tracks.length });
+      }
+    }
+  }, [state.currentIndex, state.tracks, state.isPlaying]);
 
   // good/bad フォルダ名の変更を保存
   const handleGoodFolderNameChange = useCallback(async (name: string) => {
@@ -340,6 +374,16 @@ export function PlayerView() {
         return;
       }
 
+      // 単体の音声ファイルをドロップした場合は曲情報タブで開く
+      if (paths.length === 1) {
+        const single = await loadTrackFromFile(paths[0]).catch(() => null);
+        if (single) {
+          dispatch({ type: "SET_SONG_INFO_TRACK", track: single });
+          setActiveContentTab("songinfo");
+          return;
+        }
+      }
+
       const allTracks = [];
       for (const p of paths) {
         try {
@@ -523,6 +567,7 @@ export function PlayerView() {
       <Tabs value={activeContentTab} onValueChange={(value) => setActiveContentTab(value as ContentTab)} className="flex flex-col h-screen">
         <TabsList className="shrink-0 rounded-none border-b px-2 w-full justify-start h-8">
           <TabsTrigger value="player" className="flex-none"><Play />{t("tabs.player")}</TabsTrigger>
+          <TabsTrigger value="songinfo" className="flex-none"><Music />{t("tabs.songInfo")}</TabsTrigger>
           <TabsTrigger value="settings" className="flex-none"><Settings />{t("tabs.settings")}</TabsTrigger>
         </TabsList>
         <TabsContent value="player" keepMounted className="flex flex-col flex-1 overflow-hidden mt-0">
@@ -593,9 +638,19 @@ export function PlayerView() {
                 track={currentTrack}
                 onSetGood={() => state.currentIndex !== null && dispatch({ type: "SET_GOOD", index: state.currentIndex })}
                 onSetBad={() => state.currentIndex !== null && dispatch({ type: "SET_BAD", index: state.currentIndex })}
+                onEditSongInfo={handleEditSongInfo}
               />
             </div>
           </div>
+        </TabsContent>
+        <TabsContent value="songinfo" keepMounted className="flex flex-1 overflow-hidden mt-0">
+          <SongInfoView
+            track={state.songInfoTrack}
+            onSaved={handleLyricsSaved}
+            currentTrack={currentTrack}
+            isPlaying={state.isPlaying}
+            onTogglePlay={handleTogglePlayForSongInfo}
+          />
         </TabsContent>
         <TabsContent value="settings" keepMounted className="flex flex-1 overflow-hidden mt-0">
           <SettingsView
