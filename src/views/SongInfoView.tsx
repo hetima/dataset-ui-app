@@ -95,7 +95,7 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
         <textarea
           value={lyrics}
           onChange={(e) => setLyrics(e.target.value)}
-          className="flex-1 resize-none rounded-md border bg-transparent p-3 text-sm font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex-1 resize-none rounded-xs border bg-transparent p-3 text-sm font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           spellCheck={false}
         />
       </div>

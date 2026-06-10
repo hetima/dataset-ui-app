@@ -636,9 +636,11 @@ export function PlayerView() {
             >
               <DetailPanel
                 track={currentTrack}
+                currentIndex={state.currentIndex}
                 onSetGood={() => state.currentIndex !== null && dispatch({ type: "SET_GOOD", index: state.currentIndex })}
                 onSetBad={() => state.currentIndex !== null && dispatch({ type: "SET_BAD", index: state.currentIndex })}
                 onEditSongInfo={handleEditSongInfo}
+                onTranscriptChange={(index, transcript) => dispatch({ type: "UPDATE_TRANSCRIPT", index, transcript })}
               />
             </div>
           </div>

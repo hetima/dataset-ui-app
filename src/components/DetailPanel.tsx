@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Track } from "@/types";
 import { formatSize, formatDuration } from "@/lib/audio";
 import { Button } from "@/components/ui/button";
@@ -6,13 +7,21 @@ import { useTranslation } from "react-i18next";
 
 type Props = {
   track: Track | null;
+  currentIndex: number | null;
   onSetGood: () => void;
   onSetBad: () => void;
   onEditSongInfo: () => void;
+  onTranscriptChange: (index: number, transcript: string) => void;
 };
 
-export function DetailPanel({ track, onSetGood, onSetBad, onEditSongInfo }: Props) {
+export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSongInfo, onTranscriptChange }: Props) {
   const { t } = useTranslation();
+  const [transcript, setTranscript] = useState(track?.transcript ?? "");
+
+  // トラックが切り替わったら textarea をリセット
+  useEffect(() => {
+    setTranscript(track?.transcript ?? "");
+  }, [currentIndex, track?.transcript]);
 
   if (!track) {
     return (
@@ -62,12 +71,19 @@ export function DetailPanel({ track, onSetGood, onSetBad, onEditSongInfo }: Prop
         <p className="text-xs text-muted-foreground">{t("details.duration")}</p>
         <p>{formatDuration(track.duration)}</p>
       </div>
-      {track.transcript && (
-        <div>
-          <p className="text-xs text-muted-foreground">{t("details.transcript")}</p>
-          <p className="whitespace-pre-wrap break-all">{track.transcript}</p>
-        </div>
-      )}
+      <div>
+        <p className="text-xs text-muted-foreground mb-1">{t("details.transcript")}</p>
+        <textarea
+          value={transcript}
+          rows={6}
+          onChange={(e) => {
+            setTranscript(e.target.value);
+            if (currentIndex !== null) onTranscriptChange(currentIndex, e.target.value);
+          }}
+          className="w-full resize-none rounded-xs border bg-transparent p-2 text-xs font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          spellCheck={false}
+        />
+      </div>
       {(track.lyrics || track.syncedLyrics || track.ttml) && (
         <div>
           <p className="text-xs text-muted-foreground">{t("details.lyrics")}</p>
