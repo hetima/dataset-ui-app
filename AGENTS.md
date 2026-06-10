@@ -13,10 +13,14 @@ Tauri v2 + React 19 + TypeScript 製のデスクトップオーディオプレ�
 ## 主な機能
 
 - フォルダをウィンドウにD&Dしてプレイリストを構築（Shiftキーで追加）
-- 上下キーでリスト選択、スペースバーで再生/停止、Enterで再生
-- 1曲リピート、自動再生（選択変更時に即再生）
+- 単体音声ファイルのD&Dで歌詞タブを開く
+- 上下キーでリスト選択・再生、スペースバーで再生/停止
+- 連続再生・1曲リピート・停止の3再生モード
 - 検索フィールドによるリアルタイムフィルタ
-- 選択ファイルの詳細情報パネル（パス・サイズ・形式）
+- good/bad レーティング → サブフォルダへの一括移動
+- 詳細情報パネル（右パネル）：transcript の編集、Ctrl+S で mtdt.json 保存
+- 歌詞タブ：lyrics の textarea 編集・ファイルごとのピンポイント保存（mtdt.json + m4a タグ）
+- m4a ファイルは iTunes タグから title/album/artist/lyrics を読み取り・書き込み（Rust: mp4ameta）
 
 ## ファイル構成
 
@@ -24,16 +28,19 @@ Tauri v2 + React 19 + TypeScript 製のデスクトップオーディオプレ�
 src/
   types.ts              # Track・State・Action 型定義
   reducer.ts            # useReducer のリデューサー
-  App.tsx               # 全体組み立て・audio要素・D&D・キーボード
+  App.tsx               # ThemeProvider ルート
   lib/
-    audio.ts            # フォルダ走査・formatDuration・formatSize
-    settings.ts         # 設定の読み書き
-    utils.ts            # shadcn/ui ユーティリティ
+    audio.ts            # フォルダ走査・saveMtdt・saveLyrics・loadTrackFromFile・format系
+    settings.ts         # 設定の読み書き（tauri-plugin-store）
+    i18n.ts             # i18next 初期化・翻訳リソース（ja/en）
+    theme.ts            # テーマ型定義
+    utils.ts            # shadcn/ui ユーティリティ（cn）
   hooks/
     use-mobile.ts       # モバイル判定フック
   views/
-    PlayerView.tsx      # プレイヤーメインビュー
-    SettingsView.tsx    # 設定画面
+    PlayerView.tsx      # メインビュー。useReducer・audio要素・D&D・キーボード・タブ管理
+    SongInfoView.tsx    # 歌詞編集タブ。lyrics の textarea 編集・保存・再生ボタン
+    SettingsView.tsx    # 設定タブ
   components/
     PlayerSidebar.tsx   # サイドバー全体レイアウト
     Header.tsx          # ヘッダーレイアウト
@@ -41,13 +48,16 @@ src/
     NowPlaying.tsx      # 再生中ファイル名表示
     SearchField.tsx     # 検索入力
     PlaylistTable.tsx   # TanStack Table プレイリスト
-    DetailPanel.tsx     # 選択ファイル詳細情報
+    DetailPanel.tsx     # 選択ファイル詳細情報・transcript 編集 textarea
     sidebar/
       FolderLibrary.tsx # フォルダライブラリ一覧
-      RatedList.tsx     # レーティング済みリスト
+      RatedList.tsx     # good/bad レーティング済みリスト・移動操作
       RecentFolders.tsx # 最近開いたフォルダ
     ui/                 # shadcn/ui コンポーネント
-src-tauri/              # Tauri バックエンド（Rust）
+src-tauri/
+  src/
+    lib.rs              # Tauri コマンド（read_m4a_tags・write_m4a_lyrics）
+    main.rs             # エントリーポイント
 docs/
   superpowers/
     specs/              # 設計書
@@ -56,7 +66,7 @@ docs/
 
 ## 対応音声フォーマット
 
-mp3, m4a, flac, wav, ogg, aac, opus
+mp3, m4a, flac, wav, ogg, aac
 
 ## 開発コマンド
 
@@ -69,44 +79,57 @@ pnpm tauri build  # アプリパッケージング
 
 ## 状態管理
 
-`App` コンポーネントが `useReducer` で全状態を一元管理する。隠し `<audio>` 要素を `useRef` で操作して再生を制御する。
+`PlayerView` が `useReducer` で全状態を一元管理する。隠し `<audio>` 要素を `useRef` で操作して再生を制御する。
 
 | 状態 | 説明 |
 |------|------|
 | `tracks` | プレイリスト全件 |
-| `currentIndex` | 再生中トラックのインデックス |
-| `selectedIndex` | テーブル選択行のインデックス（再生中とは独立） |
+| `currentIndex` | 再生中/選択中トラックのインデックス |
 | `isPlaying` | 再生中かどうか |
-| `isRepeat` | 1曲リピートかどうか |
-| `autoPlay` | 選択変更時に即再生するか |
-| `searchQuery` | 検索文字列 |
+| `playMode` | `"stop"` / `"continuous"` / `"repeat"` |
+| `searchQuery` | 検索文字列（PlaylistTable のフィルタに使用） |
+| `songInfoTrack` | 歌詞タブで編集中のトラック（プレイリストとは独立） |
+
+`Track` 型の主なフィールド：
+
+| フィールド | 説明 |
+|---|---|
+| `transcript` | テキスト（DetailPanel の textarea で編集・Ctrl+S で保存） |
+| `tempTranscript` | 保存済みの transcript のスナップショット（未保存判定用） |
+| `lyrics` | 歌詞（歌詞タブで編集・ピンポイント保存） |
+| `good` / `bad` | レーティングフラグ |
 
 
 ## mtdt.json
-フォルダごとに1個存在するメタデータを格納するjsonファイル
-```
+
+フォルダごとに1個存在するメタデータファイル。`songs` は filename をキーとした辞書形式（旧形式の配列との互換あり）。
+
+```json
 {
-  "audiofiles": [
+  "songs": {
     "1.wav": {
       "filename": "1.wav",
       "transcript": "こんにちは",
       "good": true,
       "bad": false,
-      "caotion": "...",
+      "lyrics": "...",
       "duration": 10
-    },
-    {
-      ...
     }
-  ],
+  },
   "other_property": {}
 }
 ```
-という形式になっている。
-キーと`filename`はフォルダに含まれる対応するファイル名。`transcript``good``bad``duration`を本アプリで扱う。上記のようにそれ以外の値も含まれる。保存時は他の値を消してしまわないように、必ず読み込み→マージ→保存の手順で行う。ただし、保存時点で存在しないファイルのレコードは削除する。goodとbadの値を作成・更新する。`transcript`の編集機能はないが、変更されるケースもある（後述）ので保存する。`duration`は保存時に空でなければ保存する。
 
-また、`ファイル名.txt` というファイルの存在も確認する。ファイルの内容を`transcript`として読み込む。これは`mtdt.json`にレコードが存在しなかった、あるいは空だったときのフォールバックである。`mtdt.json`が存在しない、あるいは"audiofiles"リストに存在しない場合`ファイル名.txt`の読み込みを試みる。`ファイル名.txt` から`transcript`を取得できた場合、保存時に`mtdt.json`の`transcript`を新規追加する。
+- `transcript` / `good` / `bad` / `duration` / `lyrics` を本アプリで扱う。それ以外のキーも存在する。
+- 保存は必ず **読み込み→マージ→書き込み** の手順で行い、管理外キーを消さない。
+- 保存時点でフォルダに存在しないファイルのレコードは削除する。
+- `transcript` が空の場合は `ファイル名.txt` の内容をフォールバックとして読み込む。
 
-保存コマンドが実行されたときとフォルダが閉じられるときに`mtdt.json`を保存する。
+### 保存タイミング
+
+| 操作 | 対象 | 関数 |
+|---|---|---|
+| Ctrl+S / フォルダ切り替え / ウィンドウ終了 | フォルダ全体 | `saveMtdt` |
+| 歌詞タブの保存ボタン | 1ファイルの `lyrics` のみ | `saveLyrics` |
 
 
