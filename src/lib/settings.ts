@@ -8,6 +8,9 @@ const RECENT_FOLDERS_LIMIT = 16;
 const APP_KEYS = {
   language: "app.language",
   theme: "app.theme",
+  llmBaseUrl: "app.llm.baseUrl",
+  llmModel: "app.llm.model",
+  llmApiKey: "app.llm.apiKey",
 } as const;
 
 const PLAYER_VIEW_KEYS = {
@@ -42,6 +45,9 @@ export class AppSettings {
         [PLAYER_VIEW_KEYS.sidebarWidth]: 0,
         [APP_KEYS.language]: "ja",
         [APP_KEYS.theme]: "system",
+        [APP_KEYS.llmBaseUrl]: "",
+        [APP_KEYS.llmModel]: "",
+        [APP_KEYS.llmApiKey]: "",
       },
       autoSave: false,
     });
@@ -65,6 +71,33 @@ export class AppSettings {
 
   async setTheme(theme: AppTheme): Promise<void> {
     await this.store.set(APP_KEYS.theme, theme);
+    await this.store.save();
+  }
+
+  async getLlmBaseUrl(): Promise<string> {
+    return (await this.store.get<string>(APP_KEYS.llmBaseUrl)) ?? "";
+  }
+
+  async setLlmBaseUrl(baseUrl: string): Promise<void> {
+    await this.store.set(APP_KEYS.llmBaseUrl, baseUrl);
+    await this.store.save();
+  }
+
+  async getLlmModel(): Promise<string> {
+    return (await this.store.get<string>(APP_KEYS.llmModel)) ?? "";
+  }
+
+  async setLlmModel(model: string): Promise<void> {
+    await this.store.set(APP_KEYS.llmModel, model);
+    await this.store.save();
+  }
+
+  async getLlmApiKey(): Promise<string> {
+    return (await this.store.get<string>(APP_KEYS.llmApiKey)) ?? "";
+  }
+
+  async setLlmApiKey(apiKey: string): Promise<void> {
+    await this.store.set(APP_KEYS.llmApiKey, apiKey);
     await this.store.save();
   }
 }

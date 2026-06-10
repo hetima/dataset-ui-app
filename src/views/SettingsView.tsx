@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Field, FieldDescription, FieldGroup, FieldLegend, FieldSet, FieldTitle } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLegend, FieldSet, FieldTitle, FieldSeparator } from "@/components/ui/field";
 import type { AppLanguage } from "@/lib/i18n";
 import type { AppTheme } from "@/lib/theme";
 
@@ -28,14 +28,20 @@ type Props = {
   syncToggle: boolean;
   language: AppLanguage;
   theme: AppTheme;
+  llmBaseUrl: string;
+  llmModel: string;
+  llmApiKey: string;
   onGoodFolderNameChange: (name: string) => void;
   onBadFolderNameChange: (name: string) => void;
   onSyncToggleChange: (v: boolean) => void;
   onLanguageChange: (language: AppLanguage) => void;
   onThemeChange: (theme: AppTheme) => void;
+  onLlmBaseUrlChange: (baseUrl: string) => void;
+  onLlmModelChange: (model: string) => void;
+  onLlmApiKeyChange: (apiKey: string) => void;
 };
 
-export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange }: Props) {
+export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, llmBaseUrl, llmModel, llmApiKey, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange, onLlmBaseUrlChange, onLlmModelChange, onLlmApiKeyChange }: Props) {
   const { t } = useTranslation();
   const [section, setSection] = useState<Section>("general");
 
@@ -100,6 +106,39 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
                 ))}
               </div>
             </Field>
+            <FieldSeparator></FieldSeparator>
+            <FieldSet>
+              <FieldLegend variant="label">{t("settings.llm")}</FieldLegend>
+              <FieldDescription>{t("settings.llmDescription")}</FieldDescription>
+              <Field>
+                <FieldTitle>{t("settings.llmBaseUrl")}</FieldTitle>
+                <FieldDescription>{t("settings.llmBaseUrlDescription")}</FieldDescription>
+                <Input
+                  className="h-7 text-xs"
+                  value={llmBaseUrl}
+                  placeholder="http://localhost:8888/v1"
+                  onChange={(e) => onLlmBaseUrlChange(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldTitle>{t("settings.llmModel")}</FieldTitle>
+                <FieldDescription>{t("settings.llmModelDescription")}</FieldDescription>
+                <Input
+                  className="h-7 text-xs"
+                  value={llmModel}
+                  onChange={(e) => onLlmModelChange(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldTitle>{t("settings.llmApiKey")}</FieldTitle>
+                <Input
+                  className="h-7 text-xs"
+                  value={llmApiKey}
+                  type="password"
+                  onChange={(e) => onLlmApiKeyChange(e.target.value)}
+                />
+              </Field>
+            </FieldSet>
           </FieldGroup>
         )}
         {section === "player" && (
@@ -133,7 +172,7 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
               </div>
               <Switch checked={syncToggle} onCheckedChange={onSyncToggleChange} />
             </Field>
-
+            <FieldSeparator></FieldSeparator>
             {/* ショートカットキー */}
             <FieldSet>
               <FieldLegend variant="label">{t("settings.shortcuts")}</FieldLegend>

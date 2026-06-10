@@ -73,6 +73,18 @@ export function reducer(state: State, action: Action): State {
           i === action.index ? { ...t, transcript: action.transcript } : t
         ),
       };
+    case "RESTORE_TRANSCRIPT":
+      return {
+        ...state,
+        tracks: state.tracks.map((t, i) =>
+          i === action.index ? { ...t, transcript: t.tempTranscript } : t
+        ),
+      };
+    case "COMMIT_TRANSCRIPTS_TO_TEMP":
+      return {
+        ...state,
+        tracks: state.tracks.map((t) => ({ ...t, tempTranscript: t.transcript })),
+      };
     case "UPDATE_LYRICS":
       // path が一致するプレイリスト内トラックと songInfoTrack の両方を同期更新
       return {

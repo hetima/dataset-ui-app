@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { AppSettings } from "../lib/settings";
 import type { AppLanguage } from "../lib/i18n";
@@ -48,8 +49,12 @@ export function PlayerView() {
   const [activeContentTab, setActiveContentTab] = useState<ContentTab>("player");
   const [language, setLanguage] = useState<AppLanguage>("ja");
   const [theme, setTheme] = useState<AppTheme>("system");
+  const [llmBaseUrl, setLlmBaseUrl] = useState("");
+  const [llmModel, setLlmModel] = useState("");
+  const [llmApiKey, setLlmApiKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
+  const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentFolderRef = useRef<string | null>(null);
   const tracksRef = useRef(state.tracks);
@@ -112,6 +117,9 @@ export function PlayerView() {
       const loadedTheme = await settings.getTheme();
       setTheme(loadedTheme);
       setAppTheme(loadedTheme);
+      setLlmBaseUrl(await settings.getLlmBaseUrl());
+      setLlmModel(await settings.getLlmModel());
+      setLlmApiKey(await settings.getLlmApiKey());
       setSyncToggle(await playerView.getSyncToggle());
       const savedSidebarWidth = await playerView.getSidebarWidth();
       if (savedSidebarWidth > 0) {
@@ -137,9 +145,13 @@ export function PlayerView() {
   // 現在のフォルダを mtdt.json に保存
   const saveCurrentFolder = useCallback(async () => {
     if (currentFolderRef.current && tracksRef.current.length > 0) {
-      await saveMtdt(currentFolderRef.current, tracksRef.current).catch((e) =>
-        console.error("saveMtdt failed:", e)
-      );
+      try {
+        await saveMtdt(currentFolderRef.current, tracksRef.current);
+      } catch (e) {
+        console.error("saveMtdt failed:", e);
+        return false;
+      }
+      dispatch({ type: "COMMIT_TRANSCRIPTS_TO_TEMP" });
       return true;
     }
     return false;
@@ -210,6 +222,43 @@ export function PlayerView() {
     const settings = await AppSettings.load();
     await settings.setTheme(nextTheme);
   }, [setAppTheme]);
+
+  const handleLlmBaseUrlChange = useCallback(async (baseUrl: string) => {
+    setLlmBaseUrl(baseUrl);
+    const settings = await AppSettings.load();
+    await settings.setLlmBaseUrl(baseUrl);
+  }, []);
+
+  const handleLlmModelChange = useCallback(async (model: string) => {
+    setLlmModel(model);
+    const settings = await AppSettings.load();
+    await settings.setLlmModel(model);
+  }, []);
+
+  const handleLlmApiKeyChange = useCallback(async (apiKey: string) => {
+    setLlmApiKey(apiKey);
+    const settings = await AppSettings.load();
+    await settings.setLlmApiKey(apiKey);
+  }, []);
+
+  const handleGenerateTranscript = useCallback(async () => {
+    if (state.currentIndex === null || !llmBaseUrl.trim()) return;
+    setIsGeneratingTranscript(true);
+    try {
+      const transcript = await invoke<string>("generate_transcript_with_llm", {
+        filePath: state.tracks[state.currentIndex].path,
+        baseUrl: llmBaseUrl,
+        model: llmModel,
+        apiKey: llmApiKey,
+      });
+      dispatch({ type: "UPDATE_TRANSCRIPT", index: state.currentIndex, transcript });
+    } catch (e) {
+      console.error("generate_transcript_with_llm failed:", e);
+      toast.error(String(e));
+    } finally {
+      setIsGeneratingTranscript(false);
+    }
+  }, [llmApiKey, llmBaseUrl, llmModel, state.currentIndex]);
 
   // playMode 変化時に設定保存（設定ロード完了後のみ）
   const settingsLoadedRef = useRef(false);
@@ -641,6 +690,11 @@ export function PlayerView() {
                 onSetBad={() => state.currentIndex !== null && dispatch({ type: "SET_BAD", index: state.currentIndex })}
                 onEditSongInfo={handleEditSongInfo}
                 onTranscriptChange={(index, transcript) => dispatch({ type: "UPDATE_TRANSCRIPT", index, transcript })}
+                onGenerateTranscript={handleGenerateTranscript}
+                onRestoreTranscript={() => state.currentIndex !== null && dispatch({ type: "RESTORE_TRANSCRIPT", index: state.currentIndex })}
+                canGenerateTranscript={Boolean(llmBaseUrl.trim())}
+                canRestoreTranscript={currentTrack ? currentTrack.transcript !== currentTrack.tempTranscript : false}
+                isGeneratingTranscript={isGeneratingTranscript}
               />
             </div>
           </div>
@@ -661,11 +715,17 @@ export function PlayerView() {
             syncToggle={syncToggle}
             language={language}
             theme={theme}
+            llmBaseUrl={llmBaseUrl}
+            llmModel={llmModel}
+            llmApiKey={llmApiKey}
             onGoodFolderNameChange={handleGoodFolderNameChange}
             onBadFolderNameChange={handleBadFolderNameChange}
             onSyncToggleChange={handleSyncToggleChange}
             onLanguageChange={handleLanguageChange}
             onThemeChange={handleThemeChange}
+            onLlmBaseUrlChange={handleLlmBaseUrlChange}
+            onLlmModelChange={handleLlmModelChange}
+            onLlmApiKeyChange={handleLlmApiKeyChange}
           />
         </TabsContent>
       </Tabs>

@@ -25,4 +25,13 @@ tauri-plugin-store = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 mp4ameta = "0.13"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+symphonia = { version = "0.6", default-features = false, features = ["mp3", "isomp4", "aac", "flac", "wav", "ogg", "vorbis", "pcm"] }
+base64 = "0.22"
 
+[profile.release]
+opt-level = "z"       # 速度優先(3)ではなく、サイズ優先(z)で最適化
+lto = true            # リンク時最適化(Link-Time Optimization)を有効化
+codegen-units = 1     # コンパイル単位を1つにして最適化効率を最大化
+panic = "abort"       # パニック時のスタックトレース出力を省いてサイズ削減
+strip = true

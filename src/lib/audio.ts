@@ -114,7 +114,7 @@ export async function saveLyrics(filePath: string, lyrics: string): Promise<void
 }
 
 const AUDIO_EXTENSIONS = new Set([
-  "mp3", "m4a", "flac", "wav", "ogg", "aac", "opus",
+  "mp3", "m4a", "flac", "wav", "ogg", "aac",
 ]);
 
 /** ファイル名から音声ファイルかどうか判定 */
@@ -142,6 +142,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       good: false,
       bad: false,
       transcript: "",
+      tempTranscript: "",
       lyrics: "",
       draftLyrics: "",
       syncedLyrics: "",
@@ -165,6 +166,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       track.bad = song.bad ?? false;
       track.duration = song.duration ?? 0;
       track.transcript = song.transcript ?? "";
+      track.tempTranscript = track.transcript;
       track.lyrics = song.lyrics ?? "";
       track.draftLyrics = song.draft_lyrics ?? "";
       track.syncedLyrics = song.synced_lyrics ?? "";
@@ -204,6 +206,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
         const baseName = track.name.replace(/\.[^.]+$/, "");
         const txtPath = await join(folderPath, baseName + ".txt");
         track.transcript = (await readTextFile(txtPath)).trim();
+        track.tempTranscript = track.transcript;
       } catch {
         // ファイルが存在しない場合は無視
       }
@@ -232,6 +235,7 @@ export async function loadTrackFromFile(filePath: string): Promise<Track | null>
     good: false,
     bad: false,
     transcript: "",
+    tempTranscript: "",
     lyrics: "",
     draftLyrics: "",
     syncedLyrics: "",
@@ -248,6 +252,7 @@ export async function loadTrackFromFile(filePath: string): Promise<Track | null>
     track.bad = song.bad ?? false;
     track.duration = song.duration ?? 0;
     track.transcript = song.transcript ?? "";
+    track.tempTranscript = track.transcript;
     track.lyrics = song.lyrics ?? "";
     track.draftLyrics = song.draft_lyrics ?? "";
     track.syncedLyrics = song.synced_lyrics ?? "";

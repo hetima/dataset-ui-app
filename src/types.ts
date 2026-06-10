@@ -6,6 +6,7 @@ export type Track = {
   good: boolean;
   bad: boolean;
   transcript: string;
+  tempTranscript: string;
   lyrics: string;
   draftLyrics: string;
   syncedLyrics: string;
@@ -41,4 +42,6 @@ export type Action =
   | { type: "CLEAR_RATING"; index: number }
   | { type: "SET_SONG_INFO_TRACK"; track: Track | null }
   | { type: "UPDATE_LYRICS"; path: string; lyrics: string }
-  | { type: "UPDATE_TRANSCRIPT"; index: number; transcript: string };
+  | { type: "UPDATE_TRANSCRIPT"; index: number; transcript: string }
+  | { type: "RESTORE_TRANSCRIPT"; index: number }
+  | { type: "COMMIT_TRANSCRIPTS_TO_TEMP" };
