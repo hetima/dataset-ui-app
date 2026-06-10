@@ -7,12 +7,17 @@
 
 [リリースページ](https://github.com/hetima/dataset-ui-app/releases)からダウンロードするか[Scoop](https://scoop.sh/)で入れてください
 
-```
+```sh
+#インストール
 scoop bucket add hetima https://github.com/hetima/scoop-bucket
 scoop install hetima/dataset-ui-app
 
 #launch
 dataset-ui-app
+
+#アップデートチェック
+scoop update
+scoop update hetima/dataset-ui-app
 ```
 
 ## 使い方
