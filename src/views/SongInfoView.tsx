@@ -73,8 +73,8 @@ export function SongInfoView({ track, onSaved, onLyricsChange, currentTrack, isP
   const [saving, setSaving] = useState(false);
   const [geniusApiKey, setGeniusApiKey] = useState("");
   const [useGenius, setUseGenius] = useState(false);
-  const [useLrclib, setUseLrclib] = useState(true);
-  const [useYtmusic, setUseYtmusic] = useState(false);
+  const [useLrclib, setUseLrclib] = useState(false);
+  const [useYtmusic, setUseYtmusic] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   // 実際に検索に使う曲名 / アーティスト（通常はトラック値、カスタム検索時はダイアログ入力値）
   const [searchTitle, setSearchTitle] = useState("");

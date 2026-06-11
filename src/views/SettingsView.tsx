@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldGroup, FieldLegend, FieldSet, FieldTitle, FieldSeparator } from "@/components/ui/field";
 import type { AppLanguage } from "@/lib/i18n";
 import type { AppTheme } from "@/lib/theme";
@@ -41,9 +42,15 @@ type Props = {
   onLlmApiKeyChange: (apiKey: string) => void;
   geniusApiKey: string;
   onGeniusApiKeyChange: (apiKey: string) => void;
+  lyricsUseGenius: boolean;
+  lyricsUseLrclib: boolean;
+  lyricsUseYtmusic: boolean;
+  onLyricsUseGeniusChange: (v: boolean) => void;
+  onLyricsUseLrclibChange: (v: boolean) => void;
+  onLyricsUseYtmusicChange: (v: boolean) => void;
 };
 
-export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, llmBaseUrl, llmModel, llmApiKey, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange, onLlmBaseUrlChange, onLlmModelChange, onLlmApiKeyChange, geniusApiKey, onGeniusApiKeyChange }: Props) {
+export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, llmBaseUrl, llmModel, llmApiKey, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange, onLlmBaseUrlChange, onLlmModelChange, onLlmApiKeyChange, geniusApiKey, onGeniusApiKeyChange, lyricsUseGenius, lyricsUseLrclib, lyricsUseYtmusic, onLyricsUseGeniusChange, onLyricsUseLrclibChange, onLyricsUseYtmusicChange }: Props) {
   const { t } = useTranslation();
   const [section, setSection] = useState<Section>("general");
 
@@ -148,6 +155,21 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
             <FieldSet>
               <FieldLegend variant="label">{t("settings.lyrics")}</FieldLegend>
               <FieldDescription>{t("settings.lyricsDescription")}</FieldDescription>
+              <Field>
+                <FieldTitle>{t("settings.lyricsSources")}</FieldTitle>
+                <div className="flex gap-4 mt-1">
+                  {([
+                    { label: "YTMusic", checked: lyricsUseYtmusic, onChange: onLyricsUseYtmusicChange, disabled: false },
+                    { label: "Genius", checked: lyricsUseGenius, onChange: onLyricsUseGeniusChange, disabled: geniusApiKey.trim() === "" },
+                    { label: "LRCLIB", checked: lyricsUseLrclib, onChange: onLyricsUseLrclibChange, disabled: false },
+                  ]).map(({ label, checked, onChange, disabled }) => (
+                    <label key={label} className={`flex items-center gap-1.5 text-xs cursor-pointer select-none${disabled ? " opacity-50 cursor-not-allowed" : ""}`}>
+                      <Checkbox checked={checked} disabled={disabled} onCheckedChange={(v) => !disabled && onChange(!!v)} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </Field>
               <Field>
                 <FieldTitle>{t("settings.geniusApiKey")}</FieldTitle>
                 <Input

@@ -73,6 +73,9 @@ export function PlayerView() {
   const [llmModel, setLlmModel] = useState("");
   const [llmApiKey, setLlmApiKey] = useState("");
   const [geniusApiKey, setGeniusApiKey] = useState("");
+  const [lyricsUseGenius, setLyricsUseGenius] = useState(false);
+  const [lyricsUseLrclib, setLyricsUseLrclib] = useState(false);
+  const [lyricsUseYtmusic, setLyricsUseYtmusic] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
@@ -181,6 +184,9 @@ export function PlayerView() {
       setLlmModel(await settings.getLlmModel());
       setLlmApiKey(await settings.getLlmApiKey());
       setGeniusApiKey(await settings.getGeniusApiKey());
+      setLyricsUseGenius(await settings.getLyricsUseGenius());
+      setLyricsUseLrclib(await settings.getLyricsUseLrclib());
+      setLyricsUseYtmusic(await settings.getLyricsUseYtmusic());
       setSyncToggle(await playerView.getSyncToggle());
       const savedSidebarWidth = await playerView.getSidebarWidth();
       if (savedSidebarWidth > 0) {
@@ -357,6 +363,24 @@ export function PlayerView() {
     setGeniusApiKey(apiKey);
     const settings = await AppSettings.load();
     await settings.setGeniusApiKey(apiKey);
+  }, []);
+
+  const handleLyricsUseGeniusChange = useCallback(async (v: boolean) => {
+    setLyricsUseGenius(v);
+    const settings = await AppSettings.load();
+    await settings.setLyricsUseGenius(v);
+  }, []);
+
+  const handleLyricsUseLrclibChange = useCallback(async (v: boolean) => {
+    setLyricsUseLrclib(v);
+    const settings = await AppSettings.load();
+    await settings.setLyricsUseLrclib(v);
+  }, []);
+
+  const handleLyricsUseYtmusicChange = useCallback(async (v: boolean) => {
+    setLyricsUseYtmusic(v);
+    const settings = await AppSettings.load();
+    await settings.setLyricsUseYtmusic(v);
   }, []);
 
   const handleGenerateTranscript = useCallback(async () => {
@@ -931,6 +955,12 @@ export function PlayerView() {
             onLlmApiKeyChange={handleLlmApiKeyChange}
             geniusApiKey={geniusApiKey}
             onGeniusApiKeyChange={handleGeniusApiKeyChange}
+            lyricsUseGenius={lyricsUseGenius}
+            lyricsUseLrclib={lyricsUseLrclib}
+            lyricsUseYtmusic={lyricsUseYtmusic}
+            onLyricsUseGeniusChange={handleLyricsUseGeniusChange}
+            onLyricsUseLrclibChange={handleLyricsUseLrclibChange}
+            onLyricsUseYtmusicChange={handleLyricsUseYtmusicChange}
           />
         </TabsContent>
       </Tabs>

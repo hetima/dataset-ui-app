@@ -56,8 +56,8 @@ export class AppSettings {
         [APP_KEYS.llmApiKey]: "",
         [APP_KEYS.geniusApiKey]: "",
         [APP_KEYS.lyricsUseGenius]: false,
-        [APP_KEYS.lyricsUseLrclib]: true,
-        [APP_KEYS.lyricsUseYtmusic]: false,
+        [APP_KEYS.lyricsUseLrclib]: false,
+        [APP_KEYS.lyricsUseYtmusic]: true,
       },
       autoSave: false,
     });
@@ -130,7 +130,7 @@ export class AppSettings {
   }
 
   async getLyricsUseLrclib(): Promise<boolean> {
-    return (await this.store.get<boolean>(APP_KEYS.lyricsUseLrclib)) ?? true;
+    return (await this.store.get<boolean>(APP_KEYS.lyricsUseLrclib)) ?? false;
   }
 
   async setLyricsUseLrclib(v: boolean): Promise<void> {
@@ -139,7 +139,7 @@ export class AppSettings {
   }
 
   async getLyricsUseYtmusic(): Promise<boolean> {
-    return (await this.store.get<boolean>(APP_KEYS.lyricsUseYtmusic)) ?? false;
+    return (await this.store.get<boolean>(APP_KEYS.lyricsUseYtmusic)) ?? true;
   }
 
   async setLyricsUseYtmusic(v: boolean): Promise<void> {
