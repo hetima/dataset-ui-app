@@ -228,7 +228,7 @@ export function PlayerView() {
         console.error("saveMtdt failed:", e);
         return false;
       }
-      dispatch({ type: "COMMIT_TRANSCRIPTS_TO_TEMP" });
+      dispatch({ type: "MARK_TRACKS_SAVED", paths: tracksRef.current.map((t) => t.path) });
       return true;
     }
     return false;
@@ -448,6 +448,7 @@ export function PlayerView() {
       return false;
     }
     dispatch({ type: "SET_TRACKS", tracks });
+    dispatch({ type: "SET_SONG_INFO_TRACK", track: null });
     const settings = await AppSettings.load();
     const updated = await settings.playerView.pushRecentFolder(folder);
     setRecentFolders(updated);
@@ -609,6 +610,7 @@ export function PlayerView() {
         dispatch({ type: "APPEND_TRACKS", tracks: allTracks });
       } else {
         dispatch({ type: "SET_TRACKS", tracks: allTracks });
+        dispatch({ type: "SET_SONG_INFO_TRACK", track: null });
       }
     });
     return () => { promise.then((fn) => fn()); };
@@ -786,7 +788,14 @@ export function PlayerView() {
         onLoadedMetadata={handleLoadedMetadata}
         onTimeUpdate={handleTimeUpdate}
       />
-      <Tabs value={activeContentTab} onValueChange={(value) => setActiveContentTab(value as ContentTab)} className="flex flex-col h-screen">
+      <Tabs value={activeContentTab} onValueChange={(value) => {
+        const tab = value as ContentTab;
+        if (tab === "songinfo" && state.songInfoTrack === null && state.tracks.length > 0) {
+          const idx = state.currentIndex ?? 0;
+          dispatch({ type: "SET_SONG_INFO_TRACK", track: state.tracks[idx] });
+        }
+        setActiveContentTab(tab);
+      }} className="flex flex-col h-screen">
         <TabsList className="shrink-0 rounded-none border-b px-2 w-full justify-start h-8">
           <TabsTrigger value="player" className="flex-none"><Play />{t("tabs.player")}</TabsTrigger>
           <TabsTrigger value="songinfo" className="flex-none"><Music />{t("tabs.songInfo")}</TabsTrigger>

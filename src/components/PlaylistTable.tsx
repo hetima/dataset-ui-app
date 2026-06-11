@@ -83,7 +83,7 @@ export const PlaylistTable = forwardRef<HTMLDivElement, Props>(function Playlist
     }),
     columnHelper.accessor("transcript", {
       header: t("playlist.transcript"),
-      size: 420,
+      size: 40,
       cell: (info) => {
         const v = info.getValue();
         return v ? <span className="truncate block w-full text-muted-foreground">{v}</span> : null;

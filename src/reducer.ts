@@ -77,7 +77,7 @@ export function reducer(state: State, action: Action): State {
       return {
         ...state,
         tracks: state.tracks.map((t, i) =>
-          i === action.index ? { ...t, transcript: t.tempTranscript, dirty: false } : t
+          i === action.index ? { ...t, transcript: t.tempTranscript } : t
         ),
       };
     case "MARK_TRACKS_SAVED": {
@@ -89,11 +89,6 @@ export function reducer(state: State, action: Action): State {
         ),
       };
     }
-    case "COMMIT_TRANSCRIPTS_TO_TEMP":
-      return {
-        ...state,
-        tracks: state.tracks.map((t) => ({ ...t, tempTranscript: t.transcript, dirty: false })),
-      };
     case "UPDATE_LYRICS": {
       // path が一致するプレイリスト内トラックと songInfoTrack の両方を同期更新
       const { lyrics, draftLyrics, syncedLyrics, draftSyncedLyrics } = action;

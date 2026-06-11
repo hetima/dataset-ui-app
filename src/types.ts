@@ -46,5 +46,4 @@ export type Action =
   | { type: "UPDATE_LYRICS"; path: string; lyrics: string; draftLyrics: string; syncedLyrics: string; draftSyncedLyrics: string; dirty?: boolean }
   | { type: "UPDATE_TRANSCRIPT"; index: number; transcript: string }
   | { type: "RESTORE_TRANSCRIPT"; index: number }
-  | { type: "MARK_TRACKS_SAVED"; paths: string[] }
-  | { type: "COMMIT_TRANSCRIPTS_TO_TEMP" };
+  | { type: "MARK_TRACKS_SAVED"; paths: string[] };
