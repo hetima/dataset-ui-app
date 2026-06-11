@@ -87,7 +87,7 @@ export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSo
               disabled={!canGenerateTranscript || isGeneratingTranscript}
               onClick={onGenerateTranscript}
             >
-              {isGeneratingTranscript ? t("details.generating") : t("details.generateWithGemma")}
+              {isGeneratingTranscript ? t("details.generating") : t("details.transcribeWithAi")}
             </Button>
             <Button
               variant="ghost"
