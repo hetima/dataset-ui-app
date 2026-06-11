@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { LyricsSearchSheet } from "@/components/LyricsSearchSheet";
 import type { LyricsResult, LyricsSource } from "@/lib/lyrics";
 import { cn } from "@/lib/utils";
-import { Play, Pause, Square, ChevronDown, Music2, ListMusic, SwatchBook, Hammer } from "lucide-react";
+import { Play, Pause, Square, SkipBack, SkipForward, ChevronDown, Music2, ListMusic, SwatchBook, Hammer } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type LyricsTab = "lyrics" | "synced" | "actual" | "draft";
@@ -50,9 +50,15 @@ type Props = {
   isPlaying: boolean;
   /** 再生トグル。編集中トラック == 再生中トラックなら pause/resume、それ以外はこの曲を再生する */
   onTogglePlay: (track: Track) => void;
+  /** 前の曲へ送る */
+  onPrev: () => void;
+  /** 次の曲へ送る */
+  onNext: () => void;
+  /** 編集対象トラックが再生リストに属しているか（false なら曲送り不可） */
+  canSkip: boolean;
 };
 
-export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onTogglePlay }: Props) {
+export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onTogglePlay, onPrev, onNext, canSkip }: Props) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<LyricsTab>("lyrics");
   const [lyrics, setLyrics] = useState("");
@@ -211,15 +217,22 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
             <p className="text-sm break-all">{track.path}</p>
             {metaLine && <p className="text-sm text-muted-foreground break-all">{metaLine}</p>}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            onClick={() => onTogglePlay(track)}
-            title={playTitle}
-          >
-            <PlayIcon className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center shrink-0">
+            <Button variant="ghost" size="icon" onClick={onPrev} disabled={!canSkip} title="前の曲">
+              <SkipBack className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onTogglePlay(track)}
+              title={playTitle}
+            >
+              <PlayIcon className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onNext} disabled={!canSkip} title="次の曲">
+              <SkipForward className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
       <div className="flex flex-col flex-1 overflow-hidden p-4 gap-3">

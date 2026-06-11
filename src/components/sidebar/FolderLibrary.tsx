@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
-import { ChevronDown, ChevronRight, Folder, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, FolderClosed, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   ContextMenu,
@@ -9,10 +9,12 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { isAudioFile } from "@/lib/audio";
 
 type Props = {
   folders: string[];
-  onLoad: (folder: string) => void;
+  /** フォルダをロード。silent=true でトースト抑制。オーディオが無ければ false を返す */
+  onLoad: (folder: string, silent?: boolean) => Promise<boolean>;
   onRemove: (folder: string) => void;
 };
 
@@ -20,7 +22,7 @@ type FolderNodeProps = {
   path: string;
   depth: number;
   isRoot: boolean;
-  onLoad: (folder: string) => void;
+  onLoad: (folder: string, silent?: boolean) => Promise<boolean>;
   onRemove: (folder: string) => void;
 };
 
@@ -32,8 +34,21 @@ function folderName(path: string): string {
 function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) {
   const { t } = useTranslation();
   const [children, setChildren] = useState<string[] | null>(null);
+  const [hasAudio, setHasAudio] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const hasChildren = children !== null && children.length > 0;
+
+  // 行クリック: オーディオを含めばロード（トースト抑制）。
+  // 含まなければ、サブフォルダがあれば展開/格納のみ行い、無ければ何もしない。
+  const handleRowClick = () => {
+    if (hasAudio) {
+      onLoad(path, true);
+      return;
+    }
+    if (hasChildren) {
+      setIsOpen((v) => !v);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -47,9 +62,13 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
         );
         if (!cancelled) {
           setChildren(childPaths.sort((a, b) => folderName(a).localeCompare(folderName(b))));
+          setHasAudio(entries.some((entry) => entry.isFile && isAudioFile(entry.name)));
         }
       } catch {
-        if (!cancelled) setChildren([]);
+        if (!cancelled) {
+          setChildren([]);
+          setHasAudio(false);
+        }
       }
     }
     loadChildren();
@@ -63,7 +82,7 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
           <div
             className="flex items-center gap-1 px-2 py-1.5 hover:bg-accent cursor-pointer text-sm truncate w-full"
             style={{ paddingLeft: `${8 + depth * 14}px` }}
-            onClick={() => onLoad(path)}
+            onClick={handleRowClick}
           >
             {hasChildren ? (
               <button
@@ -80,7 +99,11 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
             ) : (
               <span className="w-4 h-4 shrink-0" />
             )}
-            <Folder className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+            {hasAudio ? (
+              <Folder className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <FolderClosed className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+            )}
             <span className="truncate">{folderName(path)}</span>
           </div>
         </ContextMenuTrigger>

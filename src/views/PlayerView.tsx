@@ -388,8 +388,10 @@ export function PlayerView() {
     return () => { promise.then((fn) => fn()); };
   }, [saveCurrentFolder]);
 
-  // フォルダをロードして recentFolders に追加
-  const handleLoadFolder = useCallback(async (folder: string) => {
+  // フォルダをロードして recentFolders に追加。
+  // オーディオが無ければ何もせず false を返す（呼び出し側でフォールバック可能）。
+  // silent=true のときは空フォルダでもトーストを出さない。
+  const handleLoadFolder = useCallback(async (folder: string, silent = false): Promise<boolean> => {
     // フォルダ切り替え前に現在のフォルダを保存
     await saveCurrentFolder();
     // 2秒後にローディングダイアログを表示
@@ -402,12 +404,18 @@ export function PlayerView() {
     }
     if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
     setIsLoading(false);
+    // オーディオファイルを含まないフォルダは開かず、現在の状態を維持する
+    if (tracks.length === 0) {
+      if (!silent) toast.error(t("player.noAudioInFolder"));
+      return false;
+    }
     currentFolderRef.current = folder;
     dispatch({ type: "SET_TRACKS", tracks });
     const settings = await AppSettings.load();
     const updated = await settings.playerView.pushRecentFolder(folder);
     setRecentFolders(updated);
-  }, [saveCurrentFolder]);
+    return true;
+  }, [saveCurrentFolder, t]);
 
   // ライブラリにフォルダを追加（重複排除・名前順）
   const handleAddToLibrary = useCallback(async (folder: string) => {
@@ -548,7 +556,10 @@ export function PlayerView() {
           allTracks.push(...tracks);
         } catch { /* フォルダでない場合は無視 */ }
       }
-      if (allTracks.length === 0) return;
+      if (allTracks.length === 0) {
+        toast.error(t("player.noAudioInFolder"));
+        return;
+      }
 
       // 履歴に追加
       const settings = await AppSettings.load();
@@ -564,7 +575,7 @@ export function PlayerView() {
       }
     });
     return () => { promise.then((fn) => fn()); };
-  }, [handleAddToLibrary]);
+  }, [handleAddToLibrary, t]);
 
   // キーボード操作（capture: true で各タブのショートカットを切り替える）
   useEffect(() => {
@@ -671,6 +682,17 @@ export function PlayerView() {
   };
   const handleNext = () => {
     dispatch({ type: "SET_CURRENT", index: getAdjacentVisibleIndex(state.currentIndex, 1) });
+  };
+  // 曲情報タブの曲送り。編集対象トラックを起点に隣の曲へ移り、
+  // 再生位置（currentIndex）と編集対象（songInfoTrack）の両方を更新する。
+  const handleSongInfoSkip = (direction: -1 | 1) => {
+    const baseIndex = state.songInfoTrack
+      ? state.tracks.findIndex((tr) => tr.path === state.songInfoTrack?.path)
+      : null;
+    const nextIndex = getAdjacentVisibleIndex(baseIndex, direction);
+    if (nextIndex === null) return;
+    dispatch({ type: "SET_CURRENT", index: nextIndex });
+    dispatch({ type: "SET_SONG_INFO_TRACK", track: state.tracks[nextIndex] });
   };
   const handleSeek = (time: number) => {
     if (audioRef.current) audioRef.current.currentTime = time;
@@ -826,6 +848,12 @@ export function PlayerView() {
             currentTrack={currentTrack}
             isPlaying={state.isPlaying}
             onTogglePlay={handleTogglePlayForSongInfo}
+            onPrev={() => handleSongInfoSkip(-1)}
+            onNext={() => handleSongInfoSkip(1)}
+            canSkip={
+              state.songInfoTrack !== null &&
+              state.tracks.some((tr) => tr.path === state.songInfoTrack?.path)
+            }
           />
         </TabsContent>
         <TabsContent value="settings" keepMounted className="flex flex-1 overflow-hidden mt-0">

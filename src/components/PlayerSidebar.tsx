@@ -27,7 +27,7 @@ type Props = {
   goodFolderName: string;
   badFolderName: string;
   onModeChange: (mode: SidebarMode) => void;
-  onLoadFolder: (folder: string) => void;
+  onLoadFolder: (folder: string, silent?: boolean) => Promise<boolean>;
   onRemoveLibrary: (folder: string) => void;
   onSelect: (index: number) => void;
   onMoveGood: () => void;

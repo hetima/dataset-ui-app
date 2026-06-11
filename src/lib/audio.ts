@@ -144,12 +144,12 @@ export async function saveLyricsData(filePath: string, data: LyricsData): Promis
   }
 }
 
-const AUDIO_EXTENSIONS = new Set([
+export const AUDIO_EXTENSIONS = new Set([
   "mp3", "m4a", "flac", "wav", "ogg", "aac",
 ]);
 
 /** ファイル名から音声ファイルかどうか判定 */
-function isAudioFile(name: string): boolean {
+export function isAudioFile(name: string): boolean {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
   return AUDIO_EXTENSIONS.has(ext);
 }
