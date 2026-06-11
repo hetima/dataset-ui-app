@@ -22,6 +22,7 @@ const PLAYER_VIEW_KEYS = {
   playMode: "playerview.playMode",
   syncToggle: "playerview.syncToggle",
   sidebarWidth: "playerview.sidebarWidth",
+  detailPanelWidth: "playerview.detailPanelWidth",
 } as const;
 
 /** アプリ設定の読み書きを担当するクラス */
@@ -43,6 +44,7 @@ export class AppSettings {
         [PLAYER_VIEW_KEYS.playMode]: "stop",
         [PLAYER_VIEW_KEYS.syncToggle]: false,
         [PLAYER_VIEW_KEYS.sidebarWidth]: 0,
+        [PLAYER_VIEW_KEYS.detailPanelWidth]: 256,
         [APP_KEYS.language]: "ja",
         [APP_KEYS.theme]: "system",
         [APP_KEYS.llmBaseUrl]: "",
@@ -152,6 +154,15 @@ export class PlayerViewSettings {
 
   async setSidebarWidth(width: number): Promise<void> {
     await this.store.set(PLAYER_VIEW_KEYS.sidebarWidth, width);
+    await this.store.save();
+  }
+
+  async getDetailPanelWidth(): Promise<number> {
+    return (await this.store.get<number>(PLAYER_VIEW_KEYS.detailPanelWidth)) ?? 256;
+  }
+
+  async setDetailPanelWidth(width: number): Promise<void> {
+    await this.store.set(PLAYER_VIEW_KEYS.detailPanelWidth, width);
     await this.store.save();
   }
 

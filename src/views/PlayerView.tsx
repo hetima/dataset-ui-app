@@ -26,6 +26,9 @@ import "../App.css";
 const appWindow = getCurrentWebviewWindow();
 const SIDEBAR_MIN_WIDTH = 160;
 const SIDEBAR_MAX_WIDTH = 480;
+const DETAIL_PANEL_MIN_WIDTH = 40;
+const DETAIL_PANEL_MAX_WIDTH = 640;
+const DETAIL_PANEL_DEFAULT_WIDTH = 256;
 type ContentTab = "player" | "songinfo" | "settings";
 
 export function PlayerView() {
@@ -46,6 +49,7 @@ export function PlayerView() {
   const [sidebarMode, setSidebarMode] = useState<"icon" | "open">("icon");
   const [sidebarWidth, setSidebarWidth] = useState(224);
   const [showDetailPanel, setShowDetailPanel] = useState(true);
+  const [detailPanelWidth, setDetailPanelWidth] = useState(DETAIL_PANEL_DEFAULT_WIDTH);
   const [activeContentTab, setActiveContentTab] = useState<ContentTab>("player");
   const [language, setLanguage] = useState<AppLanguage>("ja");
   const [theme, setTheme] = useState<AppTheme>("system");
@@ -62,10 +66,14 @@ export function PlayerView() {
   const syncToggleRef = useRef(syncToggle);
   const sidebarModeRef = useRef(sidebarMode);
   const sidebarWidthRef = useRef(sidebarWidth);
+  const showDetailPanelRef = useRef(showDetailPanel);
+  const detailPanelWidthRef = useRef(detailPanelWidth);
   tracksRef.current = state.tracks;
   syncToggleRef.current = syncToggle;
   sidebarModeRef.current = sidebarMode;
   sidebarWidthRef.current = sidebarWidth;
+  showDetailPanelRef.current = showDetailPanel;
+  detailPanelWidthRef.current = detailPanelWidth;
 
   const getAdjacentVisibleIndex = useCallback((currentIndex: number | null, direction: -1 | 1) => {
     const visibleIndices = visibleTrackIndicesRef.current;
@@ -100,6 +108,42 @@ export function PlayerView() {
     window.addEventListener("pointerup", handlePointerUp);
   }, [sidebarMode, sidebarWidth]);
 
+  const handleDetailPanelResizeStart = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!showDetailPanel) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = detailPanelWidth;
+    let finalWidth = startWidth;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const rawWidth = startWidth - (event.clientX - startX);
+      if (rawWidth <= 0) {
+        finalWidth = 0;
+        setShowDetailPanel(false);
+        return;
+      }
+      finalWidth = Math.max(DETAIL_PANEL_MIN_WIDTH, Math.min(DETAIL_PANEL_MAX_WIDTH, rawWidth));
+      setShowDetailPanel(true);
+      setDetailPanelWidth(finalWidth);
+    };
+    const handlePointerUp = async () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      const settings = await AppSettings.load();
+      await settings.playerView.setDetailPanelWidth(finalWidth < DETAIL_PANEL_MIN_WIDTH ? 0 : finalWidth);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  }, [detailPanelWidth, showDetailPanel]);
+
+  const handleToggleDetailPanel = useCallback(async () => {
+    const nextShow = !showDetailPanelRef.current;
+    setShowDetailPanel(nextShow);
+    const settings = await AppSettings.load();
+    await settings.playerView.setDetailPanelWidth(nextShow ? detailPanelWidthRef.current : 0);
+  }, []);
+
   // 起動時に設定を復帰
   useEffect(() => {
     AppSettings.load().then(async (settings) => {
@@ -127,6 +171,13 @@ export function PlayerView() {
         setSidebarMode("open");
       } else {
         setSidebarMode("icon");
+      }
+      const savedDetailPanelWidth = await playerView.getDetailPanelWidth();
+      if (savedDetailPanelWidth >= DETAIL_PANEL_MIN_WIDTH) {
+        setDetailPanelWidth(Math.min(DETAIL_PANEL_MAX_WIDTH, savedDetailPanelWidth));
+        setShowDetailPanel(true);
+      } else {
+        setShowDetailPanel(false);
       }
       const savedPlayMode = await playerView.getPlayMode();
       dispatch({ type: "SET_PLAY_MODE", mode: savedPlayMode as PlayMode });
@@ -302,6 +353,9 @@ export function PlayerView() {
       const settings = await AppSettings.load();
       await settings.playerView.setSidebarWidth(
         sidebarModeRef.current === "open" ? sidebarWidthRef.current : 0
+      );
+      await settings.playerView.setDetailPanelWidth(
+        showDetailPanelRef.current ? detailPanelWidthRef.current : 0
       );
     });
     return () => { promise.then((fn) => fn()); };
@@ -639,7 +693,7 @@ export function PlayerView() {
             volume={volume}
             onVolumeChange={handleVolumeChange}
             onToggleSidebar={() => setSidebarMode((m) => m === "icon" ? "open" : "icon")}
-            onToggleDetailPanel={() => setShowDetailPanel((v) => !v)}
+            onToggleDetailPanel={handleToggleDetailPanel}
           />
           <div className="flex flex-1 overflow-hidden">
             <PlayerSidebar
@@ -679,9 +733,21 @@ export function PlayerView() {
               onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
               onVisibleIndicesChange={handleVisibleIndicesChange}
             />
+            {showDetailPanel && (
+              <>
+                <div className="w-px shrink-0 bg-border" />
+                <div
+                  className="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-border"
+                  onPointerDown={handleDetailPanelResizeStart}
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={t("player.detailPanelWidth")}
+                />
+              </>
+            )}
             <div
-              className="shrink-0 overflow-hidden transition-all duration-200 border-l"
-              style={{ width: showDetailPanel ? "16rem" : "0" }}
+              className="shrink-0 overflow-hidden"
+              style={{ width: showDetailPanel ? `${detailPanelWidth}px` : "0" }}
             >
               <DetailPanel
                 track={currentTrack}

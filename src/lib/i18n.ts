@@ -42,6 +42,7 @@ const resources = {
         saveComplete: "保存しました",
         conflictMessage: "以下のファイルが移動先に既に存在します:\n{{files}}",
         sidebarWidth: "サイドバー幅",
+        detailPanelWidth: "ファイル情報パネル幅",
       },
       controls: {
         stopAfterCurrent: "再生終了後に停止",
@@ -165,6 +166,7 @@ const resources = {
         saveComplete: "Saved",
         conflictMessage: "The following files already exist in the destination:\n{{files}}",
         sidebarWidth: "Sidebar width",
+        detailPanelWidth: "File info panel width",
       },
       controls: {
         stopAfterCurrent: "Stop after current track",
