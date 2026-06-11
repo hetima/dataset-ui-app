@@ -369,7 +369,8 @@ pub fn run() {
             write_m4a_lyrics,
             write_m4a_synced_lyrics,
             generate_transcript_with_llm,
-            lyrics_search::search_lyrics
+            lyrics_search::search_lyrics,
+            lyrics_search::cancel_lyrics_search
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

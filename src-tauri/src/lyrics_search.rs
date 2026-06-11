@@ -1,7 +1,20 @@
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
+use tauri::ipc::Channel;
 
-#[derive(Serialize)]
+/// 検索の世代カウンタ。新しい検索開始やキャンセルでインクリメントされ、
+/// 実行中の検索は自分の世代が最新でなくなったら中断する。
+static SEARCH_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// 実行中の歌詞検索を中断する（世代を進めることで進行中ループを止める）
+#[tauri::command]
+pub fn cancel_lyrics_search() {
+    SEARCH_GENERATION.fetch_add(1, Ordering::SeqCst);
+}
+
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LyricsResult {
     pub title: String,
@@ -9,57 +22,84 @@ pub struct LyricsResult {
     pub synced_lyrics: Option<String>,
 }
 
+/// 検索進捗を逐次フロントへ送るためのメッセージ
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "event", content = "data")]
+pub enum SearchEvent {
+    /// 1 件分の結果が見つかった
+    Result(LyricsResult),
+    /// あるソースの検索でエラーが発生した（致命的ではなく、他ソースは継続）
+    SourceError { source: String, message: String },
+    /// すべてのソースの検索が完了した
+    Done,
+}
+
 /// 歌詞検索の統一入口。sources で使用する API を複数選択できる（"genius" / "lrclib"）。
-/// すべての検索結果を 1 つの配列にまとめて返す。
+/// 見つかった結果を channel 経由で 1 件ずつ逐次送信し、最後に Done を送る。
 #[tauri::command]
 pub async fn search_lyrics(
     title: String,
     artist: String,
+    free: String,
     sources: Vec<String>,
     genius_api_key: String,
-) -> Result<Vec<LyricsResult>, String> {
+    channel: Channel<SearchEvent>,
+) -> Result<(), String> {
     let client = reqwest::Client::new();
-    let mut results = Vec::new();
+    // この検索を新しい世代として登録する。以降この世代が最新でなくなったら中断する。
+    let generation = SEARCH_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+    let cancelled = || SEARCH_GENERATION.load(Ordering::SeqCst) != generation;
+
+    // free が空でなければフリーワード検索に切り替える。
+    // その場合は title=free / artist="" 相当として各ソースへ渡す。
+    let (title, artist) = if free.trim().is_empty() {
+        (title.as_str(), artist.as_str())
+    } else {
+        (free.trim(), "")
+    };
 
     for source in &sources {
-        match source.as_str() {
-            "genius" => {
-                if let Ok(mut r) = search_genius_source(&client, &genius_api_key, &title, &artist).await {
-                    results.append(&mut r);
-                }
-            }
-            "lrclib" => {
-                if let Ok(mut r) = search_lrclib(&client, &title, &artist).await {
-                    results.append(&mut r);
-                }
-            }
-            _ => {}
+        if cancelled() {
+            break;
+        }
+        let result = match source.as_str() {
+            "genius" => send_genius(&channel, &client, &genius_api_key, title, artist, &cancelled).await,
+            "lrclib" => send_lrclib(&channel, &client, title, artist).await,
+            _ => Ok(()),
+        };
+        if let Err(message) = result {
+            let _ = channel.send(SearchEvent::SourceError { source: source.clone(), message });
         }
     }
 
-    Ok(results)
+    let _ = channel.send(SearchEvent::Done);
+    Ok(())
 }
 
-/// Genius API で曲を検索し、歌詞ページをスクレイピングして LyricsResult のリストを返す
-async fn search_genius_source(
+/// Genius API で曲を検索し、歌詞ページをスクレイピングして見つかった順に channel へ送る
+async fn send_genius(
+    channel: &Channel<SearchEvent>,
     client: &reqwest::Client,
     api_key: &str,
     title: &str,
     artist: &str,
-) -> Result<Vec<LyricsResult>, String> {
+    cancelled: &impl Fn() -> bool,
+) -> Result<(), String> {
     let hits = search_genius(client, api_key, title, artist).await?;
-    let mut results = Vec::new();
-    for (song_title, url) in hits {
-        match fetch_lyrics(client, &url).await {
-            Ok(lyrics) => results.push(LyricsResult {
-                title: format!("[G] {}", song_title),
+    // Genius はトップヒット1件のみ取得する
+    if let Some((song_title, url)) = hits.into_iter().next() {
+        if cancelled() {
+            return Ok(());
+        }
+        if let Ok(lyrics) = fetch_lyrics(client, &url).await {
+            let _ = channel.send(SearchEvent::Result(LyricsResult {
+                title: format!("[Genius] {}", song_title),
                 lyrics,
                 synced_lyrics: None,
-            }),
-            Err(_) => continue,
+            }));
         }
     }
-    Ok(results)
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -71,17 +111,24 @@ struct LrclibHit {
     synced_lyrics: Option<String>,
 }
 
-/// lrclib.net の検索 API を叩いて LyricsResult のリストを返す（API キー不要）
-async fn search_lrclib(
+/// lrclib.net の検索 API を叩いて、各ヒットを channel へ送る（API キー不要）
+async fn send_lrclib(
+    channel: &Channel<SearchEvent>,
     client: &reqwest::Client,
     title: &str,
     artist: &str,
-) -> Result<Vec<LyricsResult>, String> {
-    let query = format!("{} {}", title, artist);
+) -> Result<(), String> {
+    // track_name / artist_name の個別パラメータで精度を上げる。
+    // artist が空の場合は q にまとめて投げる。
+    let query: Vec<(&str, &str)> = if artist.trim().is_empty() {
+        vec![("q", title)]
+    } else {
+        vec![("track_name", title), ("artist_name", artist)]
+    };
     let hits = client
         .get("https://lrclib.net/api/search")
         .header("User-Agent", "dataset-ui-app (https://github.com/hetima/dataset-ui-app)")
-        .query(&[("q", &query)])
+        .query(&query)
         .send()
         .await
         .map_err(|e| e.to_string())?
@@ -91,27 +138,24 @@ async fn search_lrclib(
         .await
         .map_err(|e| e.to_string())?;
 
-    let results = hits
-        .into_iter()
-        .filter_map(|hit| {
-            // plainLyrics が空でも syncedLyrics があれば採用する
-            let lyrics = hit.plain_lyrics.clone().unwrap_or_default();
-            if lyrics.is_empty() && hit.synced_lyrics.is_none() {
-                return None;
-            }
-            let display = match &hit.artist_name {
-                Some(a) => format!("[L] {} - {}", hit.track_name, a),
-                None => format!("[L] {}", hit.track_name),
-            };
-            Some(LyricsResult {
-                title: display,
-                lyrics,
-                synced_lyrics: hit.synced_lyrics,
-            })
-        })
-        .collect();
+    for hit in hits {
+        // plainLyrics が空でも syncedLyrics があれば採用する
+        let lyrics = hit.plain_lyrics.clone().unwrap_or_default();
+        if lyrics.is_empty() && hit.synced_lyrics.is_none() {
+            continue;
+        }
+        let display = match &hit.artist_name {
+            Some(a) => format!("[LRCLIB] {} - {}", hit.track_name, a),
+            None => format!("[LRCLIB] {}", hit.track_name),
+        };
+        let _ = channel.send(SearchEvent::Result(LyricsResult {
+            title: display,
+            lyrics,
+            synced_lyrics: hit.synced_lyrics,
+        }));
+    }
 
-    Ok(results)
+    Ok(())
 }
 
 /// Genius Search API を叩いて (曲名, 歌詞ページURL) のリストを返す
@@ -121,7 +165,12 @@ async fn search_genius(
     title: &str,
     artist: &str,
 ) -> Result<Vec<(String, String)>, String> {
-    let query = format!("{} {}", title, artist);
+    // Genius は単一の q パラメータのみ。"曲名 アーティスト名" を繋げて投げる。
+    let query = if artist.trim().is_empty() {
+        title.to_string()
+    } else {
+        format!("{} {}", title, artist)
+    };
     let resp = client
         .get("https://api.genius.com/search")
         .bearer_auth(api_key)
@@ -153,11 +202,17 @@ async fn search_genius(
     Ok(results)
 }
 
-/// 歌詞ページ HTML をフェッチしてテキストを抽出する
+/// 歌詞ページ HTML をフェッチしてテキストを抽出する。
+/// Genius は Cloudflare の bot 対策があるため、ブラウザ相当のヘッダを付けて回避する。
 async fn fetch_lyrics(client: &reqwest::Client, url: &str) -> Result<String, String> {
     let html = client
         .get(url)
-        .header("User-Agent", "Mozilla/5.0")
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        )
+        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .header("Accept-Language", "en-US,en;q=0.9")
         .send()
         .await
         .map_err(|e| e.to_string())?

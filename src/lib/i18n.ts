@@ -19,6 +19,7 @@ const resources = {
         moving: "移動中",
         ok: "OK",
         cancel: "キャンセル",
+        search: "検索",
       },
       tabs: {
         player: "プレイヤー",
@@ -35,6 +36,9 @@ const resources = {
         saveFailed: "保存に失敗しました",
         searchLyrics: "歌詞をWebで検索",
         searchSources: "検索対象",
+        customSearch: "カスタム検索ワード...",
+        searchArtist: "アーティスト",
+        searchTitle: "曲名",
         sourceGeniusHint: "API キーが未設定です",
         tab: {
           lyrics: "歌詞",
@@ -48,6 +52,15 @@ const resources = {
           actualSynced: "同期歌詞",
           draftSynced: "同期歌詞（下書き）",
         },
+      },
+      lyricsSearch: {
+        searching: "検索中...",
+        resultCount: "{{count}}件の結果",
+        noResults: "結果が見つかりませんでした",
+        apply: "保存",
+        applyDraft: "ドラフトに保存",
+        lyrics: "歌詞",
+        synced: "同期歌詞",
       },
       player: {
         stopped: "再生停止中",
@@ -162,6 +175,7 @@ const resources = {
         moving: "Moving",
         ok: "OK",
         cancel: "Cancel",
+        search: "Search",
       },
       tabs: {
         player: "Player",
@@ -178,6 +192,9 @@ const resources = {
         saveFailed: "Failed to save",
         searchLyrics: "Search lyrics",
         searchSources: "Search sources",
+        customSearch: "Custom search query...",
+        searchArtist: "Artist",
+        searchTitle: "Title",
         sourceGeniusHint: "API key not set",
         tab: {
           lyrics: "Lyrics",
@@ -191,6 +208,15 @@ const resources = {
           actualSynced: "Actual Synced Lyrics",
           draftSynced: "Draft Synced Lyrics",
         },
+      },
+      lyricsSearch: {
+        searching: "Searching...",
+        resultCount: "{{count}} result(s)",
+        noResults: "No results found",
+        apply: "Save",
+        applyDraft: "Save to draft",
+        lyrics: "Lyrics",
+        synced: "Synced",
       },
       player: {
         stopped: "Stopped",

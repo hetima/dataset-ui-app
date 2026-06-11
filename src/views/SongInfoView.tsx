@@ -6,7 +6,11 @@ import { saveLyricsData } from "@/lib/audio";
 import { AppSettings } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Menu, MenuTrigger, MenuContent, MenuItem } from "@/components/ui/menu";
+import { Menu, MenuTrigger, MenuContent, MenuItem, MenuSeparator } from "@/components/ui/menu";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { LyricsSearchSheet } from "@/components/LyricsSearchSheet";
+import type { LyricsResult, LyricsSource } from "@/lib/lyrics";
 import { cn } from "@/lib/utils";
 import { Play, Pause, Square, ChevronDown, Music2, ListMusic, SwatchBook, Hammer } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -59,6 +63,14 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
   const [geniusApiKey, setGeniusApiKey] = useState("");
   const [useGenius, setUseGenius] = useState(false);
   const [useLrclib, setUseLrclib] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
+  // 実際に検索に使う曲名 / アーティスト（通常はトラック値、カスタム検索時はダイアログ入力値）
+  const [searchTitle, setSearchTitle] = useState("");
+  const [searchArtist, setSearchArtist] = useState("");
+  // カスタム検索ワード入力ダイアログ
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customTitle, setCustomTitle] = useState("");
+  const [customArtist, setCustomArtist] = useState("");
 
   // 対象トラックが切り替わったら各 textarea を同期する
   useEffect(() => {
@@ -124,6 +136,48 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
     }
   };
 
+  // 検索に使うソース（設定のチェック状態から導出）
+  const searchSources: LyricsSource[] = [
+    ...(useGenius && !geniusDisabled ? (["genius"] as const) : []),
+    ...(useLrclib ? (["lrclib"] as const) : []),
+  ];
+
+  // トラックから導出する既定の曲名（title 空ならファイル名・拡張子抜き）
+  const defaultTitle = track.title || track.name.replace(/\.[^.]+$/, "");
+
+  // 通常検索（トラックの title/artist）を開く
+  const handleOpenSearch = () => {
+    setSearchTitle(defaultTitle);
+    setSearchArtist(track.artist);
+    setSearchOpen(true);
+  };
+
+  // カスタム検索ダイアログを開く（初期値はトラックの値）
+  const handleOpenCustom = () => {
+    setCustomTitle(defaultTitle);
+    setCustomArtist(track.artist);
+    setCustomOpen(true);
+  };
+
+  // カスタム検索の確定。入力した title/artist で検索を開始する
+  const handleCustomSubmit = () => {
+    setCustomOpen(false);
+    setSearchTitle(customTitle);
+    setSearchArtist(customArtist);
+    setSearchOpen(true);
+  };
+
+  // 検索結果の採用。lyrics / synced 両方を Actual または Draft 側へ流し込む
+  const handleApplyResult = (result: LyricsResult, draft: boolean) => {
+    if (draft) {
+      setDraftLyrics(result.lyrics);
+      setDraftSyncedLyrics(result.syncedLyrics ?? "");
+    } else {
+      setLyrics(result.lyrics);
+      setSyncedLyrics(result.syncedLyrics ?? "");
+    }
+  };
+
   // ヘッダ表示用の title|album|artist（空はスキップして | 区切り）
   const metaLine = [track.title, track.album, track.artist].filter(Boolean).join(" | ");
 
@@ -173,6 +227,8 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
               <Button
                 variant="outline"
                 className="rounded-r-none border-r-0 text-sm"
+                disabled={searchSources.length === 0}
+                onClick={handleOpenSearch}
               >
                 {t("songInfo.searchLyrics")}
               </Button>
@@ -209,6 +265,10 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
                     <Checkbox checked={useLrclib} />
                     <span className="flex-1">LRCLIB</span>
                   </MenuItem>
+                  <MenuSeparator />
+                  <MenuItem disabled={searchSources.length === 0} onClick={handleOpenCustom}>
+                    {t("songInfo.customSearch")}
+                  </MenuItem>
                 </MenuContent>
               </Menu>
             </div>
@@ -231,6 +291,58 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
           />
         </div>
       </div>
+
+      <LyricsSearchSheet
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        title={searchTitle}
+        artist={searchArtist}
+        sources={searchSources}
+        geniusApiKey={geniusApiKey}
+        onApply={handleApplyResult}
+      />
+
+      {/* カスタム検索ワード入力ダイアログ */}
+      <Dialog open={customOpen} onOpenChange={setCustomOpen}>
+        <DialogContent className="min-w-lg sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("songInfo.customSearch")}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-muted-foreground">{t("songInfo.searchArtist")}</label>
+              <Input
+                className="!text-sm rounded-xs"
+                value={customArtist}
+                onChange={(e) => setCustomArtist(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCustomSubmit();
+                }}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-muted-foreground">{t("songInfo.searchTitle")}</label>
+              <Input
+                className="!text-sm rounded-xs"
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCustomSubmit();
+                }}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="text-sm" variant="outline" onClick={() => setCustomOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button className="text-sm" onClick={handleCustomSubmit} disabled={!customTitle.trim() && !customArtist.trim()}>
+              {t("common.search")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -287,7 +399,7 @@ function LyricsPane({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="flex-1 resize-none rounded-xs border bg-transparent p-3 text-sm font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="flex-1 resize-none rounded-xs border bg-transparent p-2 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         spellCheck={false}
       />
     </div>
