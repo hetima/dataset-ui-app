@@ -12,6 +12,8 @@ const APP_KEYS = {
   llmModel: "app.llm.model",
   llmApiKey: "app.llm.apiKey",
   geniusApiKey: "app.lyrics.geniusApiKey",
+  lyricsUseGenius: "app.lyrics.useGenius",
+  lyricsUseLrclib: "app.lyrics.useLrclib",
 } as const;
 
 const PLAYER_VIEW_KEYS = {
@@ -52,6 +54,8 @@ export class AppSettings {
         [APP_KEYS.llmModel]: "",
         [APP_KEYS.llmApiKey]: "",
         [APP_KEYS.geniusApiKey]: "",
+        [APP_KEYS.lyricsUseGenius]: false,
+        [APP_KEYS.lyricsUseLrclib]: true,
       },
       autoSave: false,
     });
@@ -111,6 +115,24 @@ export class AppSettings {
 
   async setGeniusApiKey(apiKey: string): Promise<void> {
     await this.store.set(APP_KEYS.geniusApiKey, apiKey);
+    await this.store.save();
+  }
+
+  async getLyricsUseGenius(): Promise<boolean> {
+    return (await this.store.get<boolean>(APP_KEYS.lyricsUseGenius)) ?? false;
+  }
+
+  async setLyricsUseGenius(v: boolean): Promise<void> {
+    await this.store.set(APP_KEYS.lyricsUseGenius, v);
+    await this.store.save();
+  }
+
+  async getLyricsUseLrclib(): Promise<boolean> {
+    return (await this.store.get<boolean>(APP_KEYS.lyricsUseLrclib)) ?? true;
+  }
+
+  async setLyricsUseLrclib(v: boolean): Promise<void> {
+    await this.store.set(APP_KEYS.lyricsUseLrclib, v);
     await this.store.save();
   }
 }

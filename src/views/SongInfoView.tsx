@@ -3,8 +3,11 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Track } from "@/types";
 import { saveLyrics } from "@/lib/audio";
+import { AppSettings } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Menu, MenuTrigger, MenuContent, MenuItem } from "@/components/ui/menu";
+import { Play, Pause, Square, ChevronDown } from "lucide-react";
 
 type Props = {
   track: Track | null;
@@ -21,11 +24,38 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
   const { t } = useTranslation();
   const [lyrics, setLyrics] = useState("");
   const [saving, setSaving] = useState(false);
+  const [geniusApiKey, setGeniusApiKey] = useState("");
+  const [useGenius, setUseGenius] = useState(false);
+  const [useLrclib, setUseLrclib] = useState(true);
 
   // 対象トラックが切り替わったら textarea を同期する
   useEffect(() => {
     setLyrics(track?.lyrics ?? "");
   }, [track?.path, track?.lyrics]);
+
+  // 歌詞検索の設定を読み込む
+  useEffect(() => {
+    (async () => {
+      const settings = await AppSettings.load();
+      setGeniusApiKey(await settings.getGeniusApiKey());
+      setUseGenius(await settings.getLyricsUseGenius());
+      setUseLrclib(await settings.getLyricsUseLrclib());
+    })();
+  }, []);
+
+  const geniusDisabled = geniusApiKey.trim() === "";
+
+  const handleUseGeniusChange = async (v: boolean) => {
+    setUseGenius(v);
+    const settings = await AppSettings.load();
+    await settings.setLyricsUseGenius(v);
+  };
+
+  const handleUseLrclibChange = async (v: boolean) => {
+    setUseLrclib(v);
+    const settings = await AppSettings.load();
+    await settings.setLyricsUseLrclib(v);
+  };
 
   if (!track) {
     return (
@@ -88,9 +118,57 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
       <div className="flex flex-col flex-1 overflow-hidden p-4 gap-3">
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{t("songInfo.lyrics")}</span>
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            {t("songInfo.save")}
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* 歌詞検索ボタングループ（本体 + ▼でソース選択） */}
+            <div className="flex items-stretch">
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-r-none border-r-0"
+              >
+                {t("songInfo.searchLyrics")}
+              </Button>
+              <Menu>
+                <MenuTrigger
+                  render={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-l-none px-2"
+                      title={t("songInfo.searchSources")}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </Button>
+                  }
+                />
+                <MenuContent align="end" className="min-w-44">
+                  <MenuItem
+                    closeOnClick={false}
+                    disabled={geniusDisabled}
+                    onClick={() => !geniusDisabled && handleUseGeniusChange(!useGenius)}
+                  >
+                    <Checkbox checked={useGenius} disabled={geniusDisabled} />
+                    <span className="flex-1">Genius</span>
+                    {geniusDisabled && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {t("songInfo.sourceGeniusHint")}
+                      </span>
+                    )}
+                  </MenuItem>
+                  <MenuItem
+                    closeOnClick={false}
+                    onClick={() => handleUseLrclibChange(!useLrclib)}
+                  >
+                    <Checkbox checked={useLrclib} />
+                    <span className="flex-1">LRCLIB</span>
+                  </MenuItem>
+                </MenuContent>
+              </Menu>
+            </div>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {t("songInfo.save")}
+            </Button>
+          </div>
         </div>
         <textarea
           value={lyrics}

@@ -33,6 +33,9 @@ const resources = {
         save: "保存",
         saveComplete: "歌詞を保存しました",
         saveFailed: "保存に失敗しました",
+        searchLyrics: "歌詞検索",
+        searchSources: "検索対象",
+        sourceGeniusHint: "API キーが未設定です",
       },
       player: {
         stopped: "再生停止中",
@@ -161,6 +164,9 @@ const resources = {
         save: "Save",
         saveComplete: "Lyrics saved",
         saveFailed: "Failed to save",
+        searchLyrics: "Search lyrics",
+        searchSources: "Search sources",
+        sourceGeniusHint: "API key not set",
       },
       player: {
         stopped: "Stopped",
