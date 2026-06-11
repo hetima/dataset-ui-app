@@ -215,12 +215,15 @@ export function PlayerView() {
     if (tracksRef.current.length > 0) {
       try {
         await saveMtdtByTracks(tracksRef.current);
-        await Promise.all(tracksRef.current.filter((track) => track.dirty).map((track) => saveLyricsData(track.path, {
-          lyrics: track.lyrics,
-          draftLyrics: track.draftLyrics,
-          syncedLyrics: track.syncedLyrics,
-          draftSyncedLyrics: track.draftSyncedLyrics,
-        })));
+        // mtdt.json の read-modify-write が競合しないよう逐次実行する
+        for (const track of tracksRef.current.filter((t) => t.dirty)) {
+          await saveLyricsData(track.path, {
+            lyrics: track.lyrics,
+            draftLyrics: track.draftLyrics,
+            syncedLyrics: track.syncedLyrics,
+            draftSyncedLyrics: track.draftSyncedLyrics,
+          });
+        }
       } catch (e) {
         console.error("saveMtdt failed:", e);
         return false;
@@ -237,12 +240,15 @@ export function PlayerView() {
     if (dirtyTracks.length === 0) return false;
     try {
       await saveMtdtByTracks(dirtyTracks);
-      await Promise.all(dirtyTracks.map((track) => saveLyricsData(track.path, {
-        lyrics: track.lyrics,
-        draftLyrics: track.draftLyrics,
-        syncedLyrics: track.syncedLyrics,
-        draftSyncedLyrics: track.draftSyncedLyrics,
-      })));
+      // mtdt.json の read-modify-write が競合しないよう逐次実行する
+      for (const track of dirtyTracks) {
+        await saveLyricsData(track.path, {
+          lyrics: track.lyrics,
+          draftLyrics: track.draftLyrics,
+          syncedLyrics: track.syncedLyrics,
+          draftSyncedLyrics: track.draftSyncedLyrics,
+        });
+      }
       dispatch({ type: "MARK_TRACKS_SAVED", paths: dirtyTracks.map((track) => track.path) });
       toast.success(t("player.savedItems", { count: dirtyTracks.length }));
       return true;
