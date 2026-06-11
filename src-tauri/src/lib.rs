@@ -1,3 +1,5 @@
+mod lyrics_search;
+
 use std::fs::File;
 
 use base64::Engine;
@@ -342,7 +344,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_m4a_tags,
             write_m4a_lyrics,
-            generate_transcript_with_llm
+            generate_transcript_with_llm,
+            lyrics_search::search_lyrics
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

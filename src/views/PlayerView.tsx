@@ -56,6 +56,7 @@ export function PlayerView() {
   const [llmBaseUrl, setLlmBaseUrl] = useState("");
   const [llmModel, setLlmModel] = useState("");
   const [llmApiKey, setLlmApiKey] = useState("");
+  const [geniusApiKey, setGeniusApiKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
@@ -164,6 +165,7 @@ export function PlayerView() {
       setLlmBaseUrl(await settings.getLlmBaseUrl());
       setLlmModel(await settings.getLlmModel());
       setLlmApiKey(await settings.getLlmApiKey());
+      setGeniusApiKey(await settings.getGeniusApiKey());
       setSyncToggle(await playerView.getSyncToggle());
       const savedSidebarWidth = await playerView.getSidebarWidth();
       if (savedSidebarWidth > 0) {
@@ -290,6 +292,12 @@ export function PlayerView() {
     setLlmApiKey(apiKey);
     const settings = await AppSettings.load();
     await settings.setLlmApiKey(apiKey);
+  }, []);
+
+  const handleGeniusApiKeyChange = useCallback(async (apiKey: string) => {
+    setGeniusApiKey(apiKey);
+    const settings = await AppSettings.load();
+    await settings.setGeniusApiKey(apiKey);
   }, []);
 
   const handleGenerateTranscript = useCallback(async () => {
@@ -792,6 +800,8 @@ export function PlayerView() {
             onLlmBaseUrlChange={handleLlmBaseUrlChange}
             onLlmModelChange={handleLlmModelChange}
             onLlmApiKeyChange={handleLlmApiKeyChange}
+            geniusApiKey={geniusApiKey}
+            onGeniusApiKeyChange={handleGeniusApiKeyChange}
           />
         </TabsContent>
       </Tabs>

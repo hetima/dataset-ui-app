@@ -28,6 +28,7 @@ mp4ameta = "0.13"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 symphonia = { version = "0.6", default-features = false, features = ["mp3", "isomp4", "aac", "flac", "wav", "ogg", "vorbis", "pcm"] }
 base64 = "0.22"
+scraper = "0.22"
 
 [profile.release]
 opt-level = "z"       # 速度優先(3)ではなく、サイズ優先(z)で最適化

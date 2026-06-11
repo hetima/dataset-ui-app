@@ -7,7 +7,7 @@ import { Field, FieldDescription, FieldGroup, FieldLegend, FieldSet, FieldTitle,
 import type { AppLanguage } from "@/lib/i18n";
 import type { AppTheme } from "@/lib/theme";
 
-type Section = "general" | "player";
+type Section = "general" | "player" | "lyrics";
 
 const SHORTCUTS = [
   { key: "settings.shortcutKeys.space", descKey: "settings.shortcutDescriptions.space" },
@@ -39,9 +39,11 @@ type Props = {
   onLlmBaseUrlChange: (baseUrl: string) => void;
   onLlmModelChange: (model: string) => void;
   onLlmApiKeyChange: (apiKey: string) => void;
+  geniusApiKey: string;
+  onGeniusApiKeyChange: (apiKey: string) => void;
 };
 
-export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, llmBaseUrl, llmModel, llmApiKey, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange, onLlmBaseUrlChange, onLlmModelChange, onLlmApiKeyChange }: Props) {
+export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, llmBaseUrl, llmModel, llmApiKey, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange, onLlmBaseUrlChange, onLlmModelChange, onLlmApiKeyChange, geniusApiKey, onGeniusApiKeyChange }: Props) {
   const { t } = useTranslation();
   const [section, setSection] = useState<Section>("general");
 
@@ -49,7 +51,7 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
     <div className="flex flex-1 overflow-hidden h-full">
       {/* セクションリスト（左） */}
       <div className="flex flex-col gap-0.5 p-2 w-28 shrink-0 border-r">
-        {(["general", "player"] as Section[]).map((s) => (
+        {(["general", "player", "lyrics"] as Section[]).map((s) => (
           <Button
             key={s}
             variant={section === s ? "secondary" : "ghost"}
@@ -136,6 +138,23 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
                   value={llmApiKey}
                   type="password"
                   onChange={(e) => onLlmApiKeyChange(e.target.value)}
+                />
+              </Field>
+            </FieldSet>
+          </FieldGroup>
+        )}
+        {section === "lyrics" && (
+          <FieldGroup>
+            <FieldSet>
+              <FieldLegend variant="label">{t("settings.lyrics")}</FieldLegend>
+              <FieldDescription>{t("settings.lyricsDescription")}</FieldDescription>
+              <Field>
+                <FieldTitle>{t("settings.geniusApiKey")}</FieldTitle>
+                <Input
+                  className="h-7 text-xs"
+                  value={geniusApiKey}
+                  type="password"
+                  onChange={(e) => onGeniusApiKeyChange(e.target.value)}
                 />
               </Field>
             </FieldSet>

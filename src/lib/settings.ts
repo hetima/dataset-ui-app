@@ -11,6 +11,7 @@ const APP_KEYS = {
   llmBaseUrl: "app.llm.baseUrl",
   llmModel: "app.llm.model",
   llmApiKey: "app.llm.apiKey",
+  geniusApiKey: "app.lyrics.geniusApiKey",
 } as const;
 
 const PLAYER_VIEW_KEYS = {
@@ -50,6 +51,7 @@ export class AppSettings {
         [APP_KEYS.llmBaseUrl]: "",
         [APP_KEYS.llmModel]: "",
         [APP_KEYS.llmApiKey]: "",
+        [APP_KEYS.geniusApiKey]: "",
       },
       autoSave: false,
     });
@@ -100,6 +102,15 @@ export class AppSettings {
 
   async setLlmApiKey(apiKey: string): Promise<void> {
     await this.store.set(APP_KEYS.llmApiKey, apiKey);
+    await this.store.save();
+  }
+
+  async getGeniusApiKey(): Promise<string> {
+    return (await this.store.get<string>(APP_KEYS.geniusApiKey)) ?? "";
+  }
+
+  async setGeniusApiKey(apiKey: string): Promise<void> {
+    await this.store.set(APP_KEYS.geniusApiKey, apiKey);
     await this.store.save();
   }
 }
