@@ -3,8 +3,8 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { invoke } from "@tauri-apps/api/core";
+import { readFile } from "@tauri-apps/plugin-fs";
 import { toast } from "sonner";
 import { AppSettings } from "../lib/settings";
 import type { AppLanguage } from "../lib/i18n";
@@ -31,11 +31,27 @@ const DETAIL_PANEL_MAX_WIDTH = 640;
 const DETAIL_PANEL_DEFAULT_WIDTH = 256;
 type ContentTab = "player" | "songinfo" | "settings";
 
+// 拡張子から audio 要素用の MIME タイプを推定する
+const AUDIO_MIME: Record<string, string> = {
+  mp3: "audio/mpeg",
+  m4a: "audio/mp4",
+  aac: "audio/aac",
+  flac: "audio/flac",
+  wav: "audio/wav",
+  ogg: "audio/ogg",
+};
+function audioMime(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  return AUDIO_MIME[ext] ?? "audio/*";
+}
+
 export function PlayerView() {
   const { t, i18n } = useTranslation();
   const { setTheme: setAppTheme } = useTheme();
   const [state, dispatch] = useReducer(reducer, initialState);
   const audioRef = useRef<HTMLAudioElement>(null);
+  // 再生中ファイルの object URL。ファイルハンドルを掴まないようメモリ上の Blob を参照する
+  const objectUrlRef = useRef<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -218,9 +234,12 @@ export function PlayerView() {
   }, [state.currentIndex, state.tracks]);
 
   // 曲情報タブで歌詞保存後、プレイリスト内の同 path トラックと同期
-  const handleLyricsSaved = useCallback((path: string, lyrics: string) => {
-    dispatch({ type: "UPDATE_LYRICS", path, lyrics });
-  }, []);
+  const handleLyricsSaved = useCallback(
+    (path: string, data: { lyrics: string; draftLyrics: string; syncedLyrics: string; draftSyncedLyrics: string }) => {
+      dispatch({ type: "UPDATE_LYRICS", path, ...data });
+    },
+    []
+  );
 
   // 曲情報タブの再生ボタン
   const handleTogglePlayForSongInfo = useCallback((track: typeof state.tracks[0]) => {
@@ -411,7 +430,9 @@ export function PlayerView() {
     });
   }, []);
 
-  // 再生中トラックの変化に追従して audio src を更新
+  // 再生中トラックの変化に追従して audio src を更新する。
+  // ファイル本体を Blob として読み込み object URL を src にすることで、
+  // 再生中に元ファイルが書き換わっても（歌詞タグ保存など）再生が壊れないようにする。
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -421,9 +442,34 @@ export function PlayerView() {
     }
     const track = state.tracks[state.currentIndex];
     if (!track) return;
-    audio.src = convertFileSrc(track.path);
-    if (state.isPlaying) audio.play().catch(() => {});
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const bytes = await readFile(track.path);
+        if (cancelled) return;
+        const url = URL.createObjectURL(new Blob([bytes], { type: audioMime(track.path) }));
+        // 直前の object URL を解放してから差し替える
+        if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = url;
+        audio.src = url;
+        if (state.isPlaying) audio.play().catch(() => {});
+      } catch (e) {
+        console.error("音声ファイルの読み込みに失敗:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [state.currentIndex]);
+
+  // アンマウント時に object URL を解放する
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;

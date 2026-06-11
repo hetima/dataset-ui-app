@@ -3,7 +3,12 @@ mod lyrics_search;
 use std::fs::File;
 
 use base64::Engine;
+use mp4ameta::{Data, FreeformIdent};
 use serde::{Deserialize, Serialize};
+
+/// 同期歌詞を格納する freeform atom の mean / name（----:com.apple.iTunes:LYRICS_SYNCED）
+const LYRICS_SYNCED_MEAN: &str = "com.apple.iTunes";
+const LYRICS_SYNCED_NAME: &str = "LYRICS_SYNCED";
 use serde_json::json;
 use symphonia::core::codecs::audio::AudioDecoderOptions;
 use symphonia::core::errors::Error as SymphoniaError;
@@ -19,6 +24,7 @@ pub struct M4aTags {
     pub album: Option<String>,
     pub artist: Option<String>,
     pub lyrics: Option<String>,
+    pub synced_lyrics: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -286,8 +292,12 @@ fn read_m4a_tags(path: String) -> M4aTags {
             album: tag.album().map(|s| s.to_string()),
             artist: tag.artist().map(|s| s.to_string()),
             lyrics: tag.lyrics().map(|s| s.to_string()),
+            synced_lyrics: tag
+                .strings_of(&FreeformIdent::new_static(LYRICS_SYNCED_MEAN, LYRICS_SYNCED_NAME))
+                .next()
+                .map(|s| s.to_string()),
         },
-        Err(_) => M4aTags { title: None, album: None, artist: None, lyrics: None },
+        Err(_) => M4aTags { title: None, album: None, artist: None, lyrics: None, synced_lyrics: None },
     }
 }
 
@@ -299,6 +309,19 @@ fn write_m4a_lyrics(path: String, lyrics: String) -> Result<(), String> {
         tag.remove_lyrics();
     } else {
         tag.set_lyrics(lyrics);
+    }
+    tag.write_to_path(&path).map_err(|e| e.to_string())
+}
+
+/// m4a ファイルの freeform 同期歌詞タグ（LYRICS_SYNCED）を書き込む（他のタグは温存）
+#[tauri::command]
+fn write_m4a_synced_lyrics(path: String, synced_lyrics: String) -> Result<(), String> {
+    let mut tag = mp4ameta::Tag::read_from_path(&path).map_err(|e| e.to_string())?;
+    let ident = FreeformIdent::new_static(LYRICS_SYNCED_MEAN, LYRICS_SYNCED_NAME);
+    if synced_lyrics.is_empty() {
+        tag.remove_data_of(&ident);
+    } else {
+        tag.set_data(ident, Data::Utf8(synced_lyrics));
     }
     tag.write_to_path(&path).map_err(|e| e.to_string())
 }
@@ -344,6 +367,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_m4a_tags,
             write_m4a_lyrics,
+            write_m4a_synced_lyrics,
             generate_transcript_with_llm,
             lyrics_search::search_lyrics
         ])

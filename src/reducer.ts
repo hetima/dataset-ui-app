@@ -85,18 +85,21 @@ export function reducer(state: State, action: Action): State {
         ...state,
         tracks: state.tracks.map((t) => ({ ...t, tempTranscript: t.transcript })),
       };
-    case "UPDATE_LYRICS":
+    case "UPDATE_LYRICS": {
       // path が一致するプレイリスト内トラックと songInfoTrack の両方を同期更新
+      const { lyrics, draftLyrics, syncedLyrics, draftSyncedLyrics } = action;
+      const patch = { lyrics, draftLyrics, syncedLyrics, draftSyncedLyrics };
       return {
         ...state,
         tracks: state.tracks.map((t) =>
-          t.path === action.path ? { ...t, lyrics: action.lyrics } : t
+          t.path === action.path ? { ...t, ...patch } : t
         ),
         songInfoTrack:
           state.songInfoTrack && state.songInfoTrack.path === action.path
-            ? { ...state.songInfoTrack, lyrics: action.lyrics }
+            ? { ...state.songInfoTrack, ...patch }
             : state.songInfoTrack,
       };
+    }
     default:
       return state;
   }

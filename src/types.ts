@@ -10,6 +10,7 @@ export type Track = {
   lyrics: string;
   draftLyrics: string;
   syncedLyrics: string;
+  draftSyncedLyrics: string;
   ttml: string;
   title: string;
   album: string;
@@ -41,7 +42,7 @@ export type Action =
   | { type: "SET_BAD"; index: number }
   | { type: "CLEAR_RATING"; index: number }
   | { type: "SET_SONG_INFO_TRACK"; track: Track | null }
-  | { type: "UPDATE_LYRICS"; path: string; lyrics: string }
+  | { type: "UPDATE_LYRICS"; path: string; lyrics: string; draftLyrics: string; syncedLyrics: string; draftSyncedLyrics: string }
   | { type: "UPDATE_TRANSCRIPT"; index: number; transcript: string }
   | { type: "RESTORE_TRANSCRIPT"; index: number }
   | { type: "COMMIT_TRANSCRIPTS_TO_TEMP" };

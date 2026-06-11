@@ -33,9 +33,21 @@ const resources = {
         save: "保存",
         saveComplete: "歌詞を保存しました",
         saveFailed: "保存に失敗しました",
-        searchLyrics: "歌詞検索",
+        searchLyrics: "歌詞をWebで検索",
         searchSources: "検索対象",
         sourceGeniusHint: "API キーが未設定です",
+        tab: {
+          lyrics: "歌詞",
+          synced: "同期歌詞",
+          actual: "現在の歌詞",
+          draft: "下書き",
+        },
+        paneLabel: {
+          actualLyrics: "歌詞",
+          draftLyrics: "歌詞（下書き）",
+          actualSynced: "同期歌詞",
+          draftSynced: "同期歌詞（下書き）",
+        },
       },
       player: {
         stopped: "再生停止中",
@@ -167,6 +179,18 @@ const resources = {
         searchLyrics: "Search lyrics",
         searchSources: "Search sources",
         sourceGeniusHint: "API key not set",
+        tab: {
+          lyrics: "Lyrics",
+          synced: "Synced",
+          actual: "Actual",
+          draft: "Draft",
+        },
+        paneLabel: {
+          actualLyrics: "Actual Lyrics",
+          draftLyrics: "Draft Lyrics",
+          actualSynced: "Actual Synced Lyrics",
+          draftSynced: "Draft Synced Lyrics",
+        },
       },
       player: {
         stopped: "Stopped",

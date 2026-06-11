@@ -12,12 +12,22 @@ type SongRecord = {
   lyrics?: string;
   draft_lyrics?: string;
   synced_lyrics?: string;
+  draft_synced_lyrics?: string;
   ttml?: string;
   title?: string;
   album?: string;
   artist?: string;
   duration?: number;
   [key: string]: unknown;
+};
+
+// read_m4a_tags コマンドの返り値型
+type M4aTags = {
+  title: string | null;
+  album: string | null;
+  artist: string | null;
+  lyrics: string | null;
+  synced_lyrics: string | null;
 };
 
 // mtdt.json: songs は filename をキーとした辞書（audiofiles 等の他キーは管理外として温存）
@@ -80,18 +90,27 @@ export async function saveMtdt(folderPath: string, tracks: Track[]): Promise<voi
   await writeTextFile(mtdtPath, JSON.stringify(output, null, 2));
 }
 
+/** saveLyricsData に渡す歌詞データ。指定したキーのみ書き換える */
+export type LyricsData = {
+  lyrics?: string;
+  syncedLyrics?: string;
+  draftLyrics?: string;
+  draftSyncedLyrics?: string;
+};
+
 /**
- * 単一ファイルの lyrics を保存する。
- * - mtdt.json: 該当 filename レコードの lyrics のみ差し替え（他キー・他レコードは全て温存）
- * - m4a: iTunes lyrics タグにも書き込む
+ * 単一ファイルの各種歌詞を保存する。
+ * - mtdt.json: 該当 filename レコードの指定キーのみ差し替え（他キー・他レコードは全て温存）
+ * - m4a: lyrics は iTunes lyrics タグ、syncedLyrics は freeform LYRICS_SYNCED にも書き込む
+ *        （draft 系は mtdt.json のみ）
  */
-export async function saveLyrics(filePath: string, lyrics: string): Promise<void> {
+export async function saveLyricsData(filePath: string, data: LyricsData): Promise<void> {
   const normalized = filePath.replace(/\\/g, "/");
   const slash = normalized.lastIndexOf("/");
   const folderPath = slash >= 0 ? filePath.slice(0, filePath.length - (normalized.length - slash)) : filePath;
   const fileName = normalized.slice(slash + 1);
 
-  // mtdt.json をそのまま読み込み、該当レコードの lyrics のみ書き換える
+  // mtdt.json をそのまま読み込み、該当レコードの指定キーのみ書き換える
   const mtdtPath = await join(folderPath, "mtdt.json");
   let raw: MtdtFile = {};
   try {
@@ -103,13 +122,25 @@ export async function saveLyrics(filePath: string, lyrics: string): Promise<void
   const existing = songsMap.get(fileName) ?? { filename: fileName };
   const songs: Record<string, SongRecord> = {};
   for (const [k, v] of songsMap) songs[k] = v;
-  songs[fileName] = { ...existing, filename: fileName, lyrics };
+  songs[fileName] = {
+    ...existing,
+    filename: fileName,
+    ...(data.lyrics !== undefined ? { lyrics: data.lyrics } : {}),
+    ...(data.syncedLyrics !== undefined ? { synced_lyrics: data.syncedLyrics } : {}),
+    ...(data.draftLyrics !== undefined ? { draft_lyrics: data.draftLyrics } : {}),
+    ...(data.draftSyncedLyrics !== undefined ? { draft_synced_lyrics: data.draftSyncedLyrics } : {}),
+  };
 
   await writeTextFile(mtdtPath, JSON.stringify({ ...raw, songs }, null, 2));
 
-  // m4a の場合はタグにも書き込む
+  // m4a の場合はタグにも書き込む（lyrics / syncedLyrics のみ）
   if (fileName.toLowerCase().endsWith(".m4a")) {
-    await invoke("write_m4a_lyrics", { path: filePath, lyrics });
+    if (data.lyrics !== undefined) {
+      await invoke("write_m4a_lyrics", { path: filePath, lyrics: data.lyrics });
+    }
+    if (data.syncedLyrics !== undefined) {
+      await invoke("write_m4a_synced_lyrics", { path: filePath, syncedLyrics: data.syncedLyrics });
+    }
   }
 }
 
@@ -146,6 +177,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       lyrics: "",
       draftLyrics: "",
       syncedLyrics: "",
+      draftSyncedLyrics: "",
       ttml: "",
       title: "",
       album: "",
@@ -170,6 +202,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       track.lyrics = song.lyrics ?? "";
       track.draftLyrics = song.draft_lyrics ?? "";
       track.syncedLyrics = song.synced_lyrics ?? "";
+      track.draftSyncedLyrics = song.draft_synced_lyrics ?? "";
       track.ttml = song.ttml ?? "";
       track.title = song.title ?? "";
       track.album = song.album ?? "";
@@ -184,17 +217,15 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
   // title/album/artist が空の m4a はファイルから読み取る
   await Promise.all(
     tracks
-      .filter((t) => t.name.toLowerCase().endsWith(".m4a") && (!t.title || !t.album || !t.artist || !t.lyrics))
+      .filter((t) => t.name.toLowerCase().endsWith(".m4a") && (!t.title || !t.album || !t.artist || !t.lyrics || !t.syncedLyrics))
       .map(async (track) => {
         try {
-          const tags = await invoke<{ title: string | null; album: string | null; artist: string | null; lyrics: string | null }>(
-            "read_m4a_tags",
-            { path: track.path }
-          );
+          const tags = await invoke<M4aTags>("read_m4a_tags", { path: track.path });
           if (!track.title && tags.title) track.title = tags.title;
           if (!track.album && tags.album) track.album = tags.album;
           if (!track.artist && tags.artist) track.artist = tags.artist;
           if (!track.lyrics && tags.lyrics) track.lyrics = tags.lyrics;
+          if (!track.syncedLyrics && tags.synced_lyrics) track.syncedLyrics = tags.synced_lyrics;
         } catch { /* タグ読み取り失敗は無視 */ }
       })
   );
@@ -239,6 +270,7 @@ export async function loadTrackFromFile(filePath: string): Promise<Track | null>
     lyrics: "",
     draftLyrics: "",
     syncedLyrics: "",
+    draftSyncedLyrics: "",
     ttml: "",
     title: "",
     album: "",
@@ -256,6 +288,7 @@ export async function loadTrackFromFile(filePath: string): Promise<Track | null>
     track.lyrics = song.lyrics ?? "";
     track.draftLyrics = song.draft_lyrics ?? "";
     track.syncedLyrics = song.synced_lyrics ?? "";
+    track.draftSyncedLyrics = song.draft_synced_lyrics ?? "";
     track.ttml = song.ttml ?? "";
     track.title = song.title ?? "";
     track.album = song.album ?? "";
@@ -263,16 +296,14 @@ export async function loadTrackFromFile(filePath: string): Promise<Track | null>
   }
 
   // m4a は不足分をタグから補完
-  if (fileName.toLowerCase().endsWith(".m4a") && (!track.title || !track.album || !track.artist || !track.lyrics)) {
+  if (fileName.toLowerCase().endsWith(".m4a") && (!track.title || !track.album || !track.artist || !track.lyrics || !track.syncedLyrics)) {
     try {
-      const tags = await invoke<{ title: string | null; album: string | null; artist: string | null; lyrics: string | null }>(
-        "read_m4a_tags",
-        { path: filePath }
-      );
+      const tags = await invoke<M4aTags>("read_m4a_tags", { path: filePath });
       if (!track.title && tags.title) track.title = tags.title;
       if (!track.album && tags.album) track.album = tags.album;
       if (!track.artist && tags.artist) track.artist = tags.artist;
       if (!track.lyrics && tags.lyrics) track.lyrics = tags.lyrics;
+      if (!track.syncedLyrics && tags.synced_lyrics) track.syncedLyrics = tags.synced_lyrics;
     } catch { /* タグ読み取り失敗は無視 */ }
   }
 
