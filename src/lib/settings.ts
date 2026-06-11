@@ -24,6 +24,7 @@ const PLAYER_VIEW_KEYS = {
   goodFolderName: "playerview.goodFolderName",
   badFolderName: "playerview.badFolderName",
   playMode: "playerview.playMode",
+  autoPlay: "playerview.autoPlay",
   syncToggle: "playerview.syncToggle",
   sidebarWidth: "playerview.sidebarWidth",
   detailPanelWidth: "playerview.detailPanelWidth",
@@ -46,6 +47,7 @@ export class AppSettings {
         [PLAYER_VIEW_KEYS.goodFolderName]: "good",
         [PLAYER_VIEW_KEYS.badFolderName]: "bad",
         [PLAYER_VIEW_KEYS.playMode]: "stop",
+        [PLAYER_VIEW_KEYS.autoPlay]: true,
         [PLAYER_VIEW_KEYS.syncToggle]: false,
         [PLAYER_VIEW_KEYS.sidebarWidth]: 0,
         [PLAYER_VIEW_KEYS.detailPanelWidth]: 256,
@@ -180,6 +182,15 @@ export class PlayerViewSettings {
 
   async setPlayMode(mode: string): Promise<void> {
     await this.store.set(PLAYER_VIEW_KEYS.playMode, mode);
+    await this.store.save();
+  }
+
+  async getAutoPlay(): Promise<boolean> {
+    return (await this.store.get<boolean>(PLAYER_VIEW_KEYS.autoPlay)) ?? true;
+  }
+
+  async setAutoPlay(v: boolean): Promise<void> {
+    await this.store.set(PLAYER_VIEW_KEYS.autoPlay, v);
     await this.store.save();
   }
 

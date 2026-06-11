@@ -8,6 +8,7 @@ export type Track = {
   transcript: string;
   tempTranscript: string;
   lyrics: string;
+  tempLyrics: string;
   draftLyrics: string;
   syncedLyrics: string;
   draftSyncedLyrics: string;
@@ -23,6 +24,7 @@ export type PlayMode = "stop" | "continuous" | "repeat";
 export type State = {
   tracks: Track[];
   currentIndex: number | null;
+  selectedIndex: number | null;
   isPlaying: boolean;
   playMode: PlayMode;
   searchQuery: string;
@@ -33,6 +35,8 @@ export type Action =
   | { type: "SET_TRACKS"; tracks: Track[] }
   | { type: "APPEND_TRACKS"; tracks: Track[] }
   | { type: "SET_CURRENT"; index: number | null }
+  | { type: "SET_PLAYBACK_TRACK"; index: number | null }
+  | { type: "SELECT_TRACK"; index: number | null; autoPlay: boolean }
   | { type: "SET_PLAYING"; playing: boolean }
   | { type: "CYCLE_PLAY_MODE" }
   | { type: "SET_PLAY_MODE"; mode: PlayMode }
@@ -46,4 +50,6 @@ export type Action =
   | { type: "UPDATE_LYRICS"; path: string; lyrics: string; draftLyrics: string; syncedLyrics: string; draftSyncedLyrics: string; dirty?: boolean }
   | { type: "UPDATE_TRANSCRIPT"; index: number; transcript: string }
   | { type: "RESTORE_TRANSCRIPT"; index: number }
+  | { type: "UPDATE_DETAIL_LYRICS"; index: number; lyrics: string }
+  | { type: "RESTORE_LYRICS"; index: number }
   | { type: "MARK_TRACKS_SAVED"; paths: string[] };

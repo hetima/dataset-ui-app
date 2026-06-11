@@ -231,6 +231,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       transcript: "",
       tempTranscript: "",
       lyrics: "",
+      tempLyrics: "",
       draftLyrics: "",
       syncedLyrics: "",
       draftSyncedLyrics: "",
@@ -257,6 +258,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       track.transcript = song.transcript ?? "";
       track.tempTranscript = track.transcript;
       track.lyrics = song.lyrics ?? "";
+      track.tempLyrics = track.lyrics;
       track.draftLyrics = song.draft_lyrics ?? "";
       track.syncedLyrics = song.synced_lyrics ?? "";
       track.draftSyncedLyrics = song.draft_synced_lyrics ?? "";
@@ -282,6 +284,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
           if (!track.album && tags.album) track.album = tags.album;
           if (!track.artist && tags.artist) track.artist = tags.artist;
           if (!track.lyrics && tags.lyrics) track.lyrics = tags.lyrics;
+          track.tempLyrics = track.lyrics;
           if (!track.syncedLyrics && tags.synced_lyrics) track.syncedLyrics = tags.synced_lyrics;
         } catch { /* タグ読み取り失敗は無視 */ }
       })
@@ -325,6 +328,7 @@ export async function loadTrackFromFile(filePath: string): Promise<Track | null>
     transcript: "",
     tempTranscript: "",
     lyrics: "",
+    tempLyrics: "",
     draftLyrics: "",
     syncedLyrics: "",
     draftSyncedLyrics: "",
@@ -344,6 +348,7 @@ export async function loadTrackFromFile(filePath: string): Promise<Track | null>
     track.transcript = song.transcript ?? "";
     track.tempTranscript = track.transcript;
     track.lyrics = song.lyrics ?? "";
+    track.tempLyrics = track.lyrics;
     track.draftLyrics = song.draft_lyrics ?? "";
     track.syncedLyrics = song.synced_lyrics ?? "";
     track.draftSyncedLyrics = song.draft_synced_lyrics ?? "";
@@ -361,6 +366,7 @@ export async function loadTrackFromFile(filePath: string): Promise<Track | null>
       if (!track.album && tags.album) track.album = tags.album;
       if (!track.artist && tags.artist) track.artist = tags.artist;
       if (!track.lyrics && tags.lyrics) track.lyrics = tags.lyrics;
+      track.tempLyrics = track.lyrics;
       if (!track.syncedLyrics && tags.synced_lyrics) track.syncedLyrics = tags.synced_lyrics;
     } catch { /* タグ読み取り失敗は無視 */ }
   }

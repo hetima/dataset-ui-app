@@ -61,6 +61,7 @@ export function PlayerView() {
   const [recentFolders, setRecentFolders] = useState<string[]>([]);
   const [goodFolderName, setGoodFolderName] = useState("good");
   const [badFolderName, setBadFolderName] = useState("bad");
+  const [autoPlay, setAutoPlay] = useState(true);
   const [syncToggle, setSyncToggle] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<"icon" | "open">("icon");
   const [sidebarWidth, setSidebarWidth] = useState(224);
@@ -187,6 +188,7 @@ export function PlayerView() {
       setLyricsUseGenius(await settings.getLyricsUseGenius());
       setLyricsUseLrclib(await settings.getLyricsUseLrclib());
       setLyricsUseYtmusic(await settings.getLyricsUseYtmusic());
+      setAutoPlay(await playerView.getAutoPlay());
       setSyncToggle(await playerView.getSyncToggle());
       const savedSidebarWidth = await playerView.getSidebarWidth();
       if (savedSidebarWidth > 0) {
@@ -267,10 +269,10 @@ export function PlayerView() {
 
   // 情報パネルの編集ボタン → 現在トラックを曲情報タブで開く
   const handleEditSongInfo = useCallback(() => {
-    if (state.currentIndex === null) return;
-    dispatch({ type: "SET_SONG_INFO_TRACK", track: state.tracks[state.currentIndex] });
+    if (state.selectedIndex === null) return;
+    dispatch({ type: "SET_SONG_INFO_TRACK", track: state.tracks[state.selectedIndex] });
     setActiveContentTab("songinfo");
-  }, [state.currentIndex, state.tracks]);
+  }, [state.selectedIndex, state.tracks]);
 
   // 曲情報タブで歌詞保存後、プレイリスト内の同 path トラックと同期
   const handleLyricsSaved = useCallback(
@@ -325,6 +327,12 @@ export function PlayerView() {
     setSyncToggle(v);
     const settings = await AppSettings.load();
     await settings.playerView.setSyncToggle(v);
+  }, []);
+
+  const handleAutoPlayChange = useCallback(async (v: boolean) => {
+    setAutoPlay(v);
+    const settings = await AppSettings.load();
+    await settings.playerView.setAutoPlay(v);
   }, []);
 
   const handleLanguageChange = useCallback(async (nextLanguage: AppLanguage) => {
@@ -384,23 +392,24 @@ export function PlayerView() {
   }, []);
 
   const handleGenerateTranscript = useCallback(async () => {
-    if (state.currentIndex === null || !llmBaseUrl.trim()) return;
+    if (state.selectedIndex === null || !llmBaseUrl.trim()) return;
+    const index = state.selectedIndex;
     setIsGeneratingTranscript(true);
     try {
       const transcript = await invoke<string>("generate_transcript_with_llm", {
-        filePath: state.tracks[state.currentIndex].path,
+        filePath: state.tracks[index].path,
         baseUrl: llmBaseUrl,
         model: llmModel,
         apiKey: llmApiKey,
       });
-      dispatch({ type: "UPDATE_TRANSCRIPT", index: state.currentIndex, transcript });
+      dispatch({ type: "UPDATE_TRANSCRIPT", index, transcript });
     } catch (e) {
       console.error("generate_transcript_with_llm failed:", e);
       toast.error(String(e));
     } finally {
       setIsGeneratingTranscript(false);
     }
-  }, [llmApiKey, llmBaseUrl, llmModel, state.currentIndex]);
+  }, [llmApiKey, llmBaseUrl, llmModel, state.selectedIndex, state.tracks]);
 
   // playMode 変化時に設定保存（設定ロード完了後のみ）
   const settingsLoadedRef = useRef(false);
@@ -508,10 +517,16 @@ export function PlayerView() {
     if (!audio) return;
     if (state.currentIndex === null) {
       audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
       return;
     }
     const track = state.tracks[state.currentIndex];
     if (!track) return;
+
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
 
     let cancelled = false;
     (async () => {
@@ -560,7 +575,7 @@ export function PlayerView() {
     if (state.playMode === "continuous") {
       const next = getAdjacentVisibleIndex(state.currentIndex, 1);
       if (next !== null && next !== state.currentIndex) {
-        dispatch({ type: "SET_CURRENT", index: next });
+        dispatch({ type: "SET_PLAYBACK_TRACK", index: next });
         return;
       }
     }
@@ -668,55 +683,59 @@ export function PlayerView() {
       if (e.code === "Space") {
         e.preventDefault();
         e.stopPropagation();
-        dispatch({ type: "SET_PLAYING", playing: !state.isPlaying });
+        if (state.currentIndex === null && state.selectedIndex !== null) {
+          dispatch({ type: "SET_PLAYBACK_TRACK", index: state.selectedIndex });
+        } else {
+          dispatch({ type: "SET_PLAYING", playing: !state.isPlaying });
+        }
       }
       if (e.code === "ArrowUp") {
         e.preventDefault();
         e.stopPropagation();
-        const next = getAdjacentVisibleIndex(state.currentIndex, -1);
-        dispatch({ type: "SET_CURRENT", index: next });
+        const next = getAdjacentVisibleIndex(state.selectedIndex, -1);
+        dispatch({ type: "SELECT_TRACK", index: next, autoPlay });
       }
       if (e.code === "ArrowDown") {
         e.preventDefault();
         e.stopPropagation();
-        const next = getAdjacentVisibleIndex(state.currentIndex, 1);
-        dispatch({ type: "SET_CURRENT", index: next });
+        const next = getAdjacentVisibleIndex(state.selectedIndex, 1);
+        dispatch({ type: "SELECT_TRACK", index: next, autoPlay });
       }
-      if (e.code === "KeyG" && state.currentIndex !== null) {
-        dispatch({ type: "SET_GOOD", index: state.currentIndex });
+      if (e.code === "KeyG" && state.selectedIndex !== null) {
+        dispatch({ type: "SET_GOOD", index: state.selectedIndex });
       }
-      if (e.code === "KeyB" && state.currentIndex !== null) {
-        dispatch({ type: "SET_BAD", index: state.currentIndex });
+      if (e.code === "KeyB" && state.selectedIndex !== null) {
+        dispatch({ type: "SET_BAD", index: state.selectedIndex });
       }
       if (e.code === "KeyL") {
         dispatch({ type: "CYCLE_PLAY_MODE" });
       }
-      if (e.code === "ArrowLeft" && state.currentIndex !== null) {
+      if (e.code === "ArrowLeft" && state.selectedIndex !== null) {
         e.preventDefault();
         e.stopPropagation();
         if (syncToggleRef.current) {
-          const t = tracksRef.current[state.currentIndex];
+          const t = tracksRef.current[state.selectedIndex];
           if (t.good) { /* good付きはそのまま */ }
-          else if (t.bad) { dispatch({ type: "CLEAR_RATING", index: state.currentIndex }); }
-          else { dispatch({ type: "SET_GOOD", index: state.currentIndex }); }
+          else if (t.bad) { dispatch({ type: "CLEAR_RATING", index: state.selectedIndex }); }
+          else { dispatch({ type: "SET_GOOD", index: state.selectedIndex }); }
         } else {
-          dispatch({ type: "SET_GOOD", index: state.currentIndex });
+          dispatch({ type: "SET_GOOD", index: state.selectedIndex });
         }
       }
-      if (e.code === "ArrowRight" && state.currentIndex !== null) {
+      if (e.code === "ArrowRight" && state.selectedIndex !== null) {
         e.preventDefault();
         e.stopPropagation();
         if (syncToggleRef.current) {
-          const t = tracksRef.current[state.currentIndex];
+          const t = tracksRef.current[state.selectedIndex];
           if (t.bad) { /* bad付きはそのまま */ }
-          else if (t.good) { dispatch({ type: "CLEAR_RATING", index: state.currentIndex }); }
-          else { dispatch({ type: "SET_BAD", index: state.currentIndex }); }
+          else if (t.good) { dispatch({ type: "CLEAR_RATING", index: state.selectedIndex }); }
+          else { dispatch({ type: "SET_BAD", index: state.selectedIndex }); }
         } else {
-          dispatch({ type: "SET_BAD", index: state.currentIndex });
+          dispatch({ type: "SET_BAD", index: state.selectedIndex });
         }
       }
-      if ((e.code === "Delete" || e.code === "Backspace" || e.code === "KeyH" || e.code === "KeyC") && state.currentIndex !== null) {
-        dispatch({ type: "CLEAR_RATING", index: state.currentIndex });
+      if ((e.code === "Delete" || e.code === "Backspace" || e.code === "KeyH" || e.code === "KeyC") && state.selectedIndex !== null) {
+        dispatch({ type: "CLEAR_RATING", index: state.selectedIndex });
       }
     };
 
@@ -737,24 +756,31 @@ export function PlayerView() {
 
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
-  }, [activeContentTab, getAdjacentVisibleIndex, state.isPlaying, state.currentIndex, saveCurrentFolder, t]);
+  }, [activeContentTab, autoPlay, getAdjacentVisibleIndex, state.isPlaying, state.currentIndex, state.selectedIndex, saveCurrentFolder, t]);
 
-  const handlePlayPause = () => dispatch({ type: "SET_PLAYING", playing: !state.isPlaying });
+  const handlePlayPause = () => {
+    if (state.currentIndex === null && state.selectedIndex !== null) {
+      dispatch({ type: "SET_PLAYBACK_TRACK", index: state.selectedIndex });
+      return;
+    }
+    dispatch({ type: "SET_PLAYING", playing: !state.isPlaying });
+  };
   const handlePrev = () => {
-    dispatch({ type: "SET_CURRENT", index: getAdjacentVisibleIndex(state.currentIndex, -1) });
+    dispatch({ type: "SET_PLAYBACK_TRACK", index: getAdjacentVisibleIndex(state.currentIndex, -1) });
   };
   const handleNext = () => {
-    dispatch({ type: "SET_CURRENT", index: getAdjacentVisibleIndex(state.currentIndex, 1) });
+    dispatch({ type: "SET_PLAYBACK_TRACK", index: getAdjacentVisibleIndex(state.currentIndex, 1) });
   };
-  // 曲情報タブの曲送り。編集対象トラックを起点に隣の曲へ移り、
-  // 再生位置（currentIndex）と編集対象（songInfoTrack）の両方を更新する。
+  // 曲情報タブの曲送り。選択範囲は変えず、条件を満たす場合だけ再生対象も切り替える。
   const handleSongInfoSkip = (direction: -1 | 1) => {
     const baseIndex = state.songInfoTrack
       ? state.tracks.findIndex((tr) => tr.path === state.songInfoTrack?.path)
       : null;
     const nextIndex = getAdjacentVisibleIndex(baseIndex, direction);
     if (nextIndex === null) return;
-    dispatch({ type: "SET_CURRENT", index: nextIndex });
+    if (autoPlay || state.isPlaying) {
+      dispatch({ type: "SET_PLAYBACK_TRACK", index: nextIndex });
+    }
     dispatch({ type: "SET_SONG_INFO_TRACK", track: state.tracks[nextIndex] });
   };
   const handleSeek = (time: number) => {
@@ -763,6 +789,7 @@ export function PlayerView() {
   };
 
   const currentTrack = state.currentIndex !== null ? state.tracks[state.currentIndex] : null;
+  const selectedTrack = state.selectedIndex !== null ? state.tracks[state.selectedIndex] : null;
   const dirtyCount = state.tracks.filter((track) => track.dirty).length;
   const nowPlayingFolder = useMemo(() => {
     if (state.tracks.length === 0) return null;
@@ -775,8 +802,8 @@ export function PlayerView() {
 
   // 詳細パネル用のファイルサイズは選択時に取得する
   useEffect(() => {
-    if (state.currentIndex === null) return;
-    const index = state.currentIndex;
+    if (state.selectedIndex === null) return;
+    const index = state.selectedIndex;
     const track = state.tracks[index];
     if (!track || track.size !== null) return;
     let cancelled = false;
@@ -786,7 +813,7 @@ export function PlayerView() {
       })
       .catch((e) => console.error("getFileSize failed:", e));
     return () => { cancelled = true; };
-  }, [state.currentIndex, state.tracks]);
+  }, [state.selectedIndex, state.tracks]);
 
   return (
     <>
@@ -815,7 +842,7 @@ export function PlayerView() {
       <Tabs value={activeContentTab} onValueChange={(value) => {
         const tab = value as ContentTab;
         if (tab === "songinfo" && state.songInfoTrack === null && state.tracks.length > 0) {
-          const idx = state.currentIndex ?? 0;
+          const idx = state.selectedIndex ?? state.currentIndex ?? 0;
           dispatch({ type: "SET_SONG_INFO_TRACK", track: state.tracks[idx] });
         }
         setActiveContentTab(tab);
@@ -829,6 +856,7 @@ export function PlayerView() {
           <Header
             isPlaying={state.isPlaying}
             playMode={state.playMode}
+            autoPlay={autoPlay}
             currentTime={currentTime}
             duration={currentTrack?.duration ?? 0}
             nowPlayingName={currentTrack?.name ?? null}
@@ -840,6 +868,7 @@ export function PlayerView() {
             onNext={handleNext}
             searchRef={searchRef}
             onCyclePlayMode={() => dispatch({ type: "CYCLE_PLAY_MODE" })}
+            onToggleAutoPlay={() => handleAutoPlayChange(!autoPlay)}
             onSeek={handleSeek}
             onSearchChange={(q) => dispatch({ type: "SET_SEARCH", query: q })}
             onSearchEscapeToTable={() => tableRef.current?.focus()}
@@ -863,7 +892,7 @@ export function PlayerView() {
               onModeChange={setSidebarMode}
               onLoadFolder={handleLoadFolder}
               onRemoveLibrary={handleRemoveLibrary}
-              onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
+              onSelect={(index) => dispatch({ type: "SELECT_TRACK", index, autoPlay })}
               onMoveGood={() => handleMoveRated("good")}
               onMoveBad={() => handleMoveRated("bad")}
               onClearGoodRatings={() => handleClearRatings("good")}
@@ -882,9 +911,10 @@ export function PlayerView() {
             <PlaylistTable
               tracks={state.tracks}
               currentIndex={state.currentIndex}
+              selectedIndex={state.selectedIndex}
               searchQuery={state.searchQuery}
               ref={tableRef}
-              onSelect={(index) => dispatch({ type: "SET_CURRENT", index })}
+              onSelect={(index) => dispatch({ type: "SELECT_TRACK", index, autoPlay })}
               onVisibleIndicesChange={handleVisibleIndicesChange}
             />
             {showDetailPanel && (
@@ -904,16 +934,19 @@ export function PlayerView() {
               style={{ width: showDetailPanel ? `${detailPanelWidth}px` : "0" }}
             >
               <DetailPanel
-                track={currentTrack}
-                currentIndex={state.currentIndex}
-                onSetGood={() => state.currentIndex !== null && dispatch({ type: "SET_GOOD", index: state.currentIndex })}
-                onSetBad={() => state.currentIndex !== null && dispatch({ type: "SET_BAD", index: state.currentIndex })}
+                track={selectedTrack}
+                currentIndex={state.selectedIndex}
+                onSetGood={() => state.selectedIndex !== null && dispatch({ type: "SET_GOOD", index: state.selectedIndex })}
+                onSetBad={() => state.selectedIndex !== null && dispatch({ type: "SET_BAD", index: state.selectedIndex })}
                 onEditSongInfo={handleEditSongInfo}
                 onTranscriptChange={(index, transcript) => dispatch({ type: "UPDATE_TRANSCRIPT", index, transcript })}
+                onLyricsChange={(index, lyrics) => dispatch({ type: "UPDATE_DETAIL_LYRICS", index, lyrics })}
                 onGenerateTranscript={handleGenerateTranscript}
-                onRestoreTranscript={() => state.currentIndex !== null && dispatch({ type: "RESTORE_TRANSCRIPT", index: state.currentIndex })}
+                onRestoreTranscript={() => state.selectedIndex !== null && dispatch({ type: "RESTORE_TRANSCRIPT", index: state.selectedIndex })}
+                onRestoreLyrics={() => state.selectedIndex !== null && dispatch({ type: "RESTORE_LYRICS", index: state.selectedIndex })}
                 canGenerateTranscript={Boolean(llmBaseUrl.trim())}
-                canRestoreTranscript={currentTrack ? currentTrack.transcript !== currentTrack.tempTranscript : false}
+                canRestoreTranscript={selectedTrack ? selectedTrack.transcript !== selectedTrack.tempTranscript : false}
+                canRestoreLyrics={selectedTrack ? selectedTrack.lyrics !== selectedTrack.tempLyrics : false}
                 isGeneratingTranscript={isGeneratingTranscript}
               />
             </div>

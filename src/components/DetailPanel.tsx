@@ -12,32 +12,37 @@ type Props = {
   onSetBad: () => void;
   onEditSongInfo: () => void;
   onTranscriptChange: (index: number, transcript: string) => void;
+  onLyricsChange: (index: number, lyrics: string) => void;
   onGenerateTranscript: () => void;
   onRestoreTranscript: () => void;
+  onRestoreLyrics: () => void;
   canGenerateTranscript: boolean;
   canRestoreTranscript: boolean;
+  canRestoreLyrics: boolean;
   isGeneratingTranscript: boolean;
 };
 
-export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSongInfo, onTranscriptChange, onGenerateTranscript, onRestoreTranscript, canGenerateTranscript, canRestoreTranscript, isGeneratingTranscript }: Props) {
+export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSongInfo, onTranscriptChange, onLyricsChange, onGenerateTranscript, onRestoreTranscript, onRestoreLyrics, canGenerateTranscript, canRestoreTranscript, canRestoreLyrics, isGeneratingTranscript }: Props) {
   const { t } = useTranslation();
   const [transcript, setTranscript] = useState(track?.transcript ?? "");
+  const [lyrics, setLyrics] = useState(track?.lyrics ?? "");
 
   // トラックが切り替わったら textarea をリセット
   useEffect(() => {
     setTranscript(track?.transcript ?? "");
-  }, [currentIndex, track?.transcript]);
+    setLyrics(track?.lyrics ?? "");
+  }, [currentIndex, track?.transcript, track?.lyrics]);
 
   if (!track) {
     return (
-      <div className="w-64 shrink-0 p-4 text-sm text-muted-foreground">
+      <div className="w-full min-w-0 p-4 text-sm text-muted-foreground">
         {t("details.selectFile")}
       </div>
     );
   }
 
   return (
-    <div className="w-64 shrink-0 p-4 text-sm space-y-3">
+    <div className="w-full min-w-0 p-4 text-sm space-y-3">
       <div className="flex gap-2">
         <Button
           variant={track.good ? "default" : "ghost"}
@@ -65,25 +70,24 @@ export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSo
         </Button>
       </div>
       <div>
-        <p className="text-xs text-muted-foreground">{t("details.fileName")}</p>
         <p className="break-all">{track.name}</p>
       </div>
-      <div>
-        <p className="text-xs text-muted-foreground">{t("details.size")}</p>
-        <p>{track.size === null ? t("details.loading") : formatSize(track.size)}</p>
+      <div className="flex items-baseline gap-1 min-w-0">
+        <span className="text-xs text-muted-foreground shrink-0">{t("details.size")}:</span>
+        <span className="truncate">{track.size === null ? t("details.loading") : formatSize(track.size)}</span>
       </div>
-      <div>
-        <p className="text-xs text-muted-foreground">{t("details.duration")}</p>
-        <p>{formatDuration(track.duration)}</p>
+      <div className="flex items-baseline gap-1 min-w-0">
+        <span className="text-xs text-muted-foreground shrink-0">{t("details.duration")}:</span>
+        <span className="truncate">{formatDuration(track.duration)}</span>
       </div>
-      <div>
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <p className="text-xs text-muted-foreground">{t("details.transcript")}</p>
+      <div className="min-w-0">
+        <div className="flex items-center justify-between gap-2 mb-1 min-w-0">
+          <p className="text-xs text-muted-foreground shrink-0">{t("details.transcript")}</p>
           <div className="flex items-center gap-1">
             <Button
               variant="secondary"
               size="sm"
-              className="h-6 px-2 text-xs"
+              className="h-6 px-2 text-xs min-w-0"
               disabled={!canGenerateTranscript || isGeneratingTranscript}
               onClick={onGenerateTranscript}
             >
@@ -108,16 +112,37 @@ export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSo
             setTranscript(e.target.value);
             if (currentIndex !== null) onTranscriptChange(currentIndex, e.target.value);
           }}
-          className="w-full resize-none rounded-xs border bg-transparent p-2 text-sm font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="block w-full min-w-0 resize-none rounded-xs border bg-transparent p-2 text-sm font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           spellCheck={false}
         />
       </div>
       {(track.lyrics || track.syncedLyrics || track.ttml) && (
-        <div>
-          <p className="text-xs text-muted-foreground">{t("details.lyrics")}</p>
-          {track.lyrics && <p className="whitespace-pre-wrap break-all">{track.lyrics}</p>}
-          {track.syncedLyrics && <p className="whitespace-pre-wrap break-all">{track.syncedLyrics}</p>}
-          {track.ttml && <p className="whitespace-pre-wrap break-all">{track.ttml}</p>}
+        <div className="min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1 min-w-0">
+            <p className="text-xs text-muted-foreground shrink-0">{t("details.lyrics")}</p>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              disabled={!canRestoreLyrics}
+              onClick={onRestoreLyrics}
+              title={t("details.restoreTranscript")}
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+          <textarea
+            value={lyrics}
+            rows={6}
+            onChange={(e) => {
+              setLyrics(e.target.value);
+              if (currentIndex !== null) onLyricsChange(currentIndex, e.target.value);
+            }}
+            className="block w-full min-w-0 resize-none rounded-xs border bg-transparent p-2 text-sm font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            spellCheck={false}
+          />
+          {track.syncedLyrics && <p className="w-full max-w-full whitespace-pre-wrap break-all">{track.syncedLyrics}</p>}
+          {track.ttml && <p className="w-full max-w-full whitespace-pre-wrap break-all">{track.ttml}</p>}
         </div>
       )}
     </div>

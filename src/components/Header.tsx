@@ -12,6 +12,7 @@ type Props = {
   searchRef: RefObject<HTMLInputElement | null>;
   isPlaying: boolean;
   playMode: PlayMode;
+  autoPlay: boolean;
   currentTime: number;
   duration: number;
   nowPlayingName: string | null;
@@ -23,6 +24,7 @@ type Props = {
   onPrev: () => void;
   onNext: () => void;
   onCyclePlayMode: () => void;
+  onToggleAutoPlay: () => void;
   onSeek: (time: number) => void;
   onSearchChange: (query: string) => void;
   onSearchEscapeToTable: () => void;
@@ -43,10 +45,12 @@ export function Header(props: Props) {
         <AudioControls
           isPlaying={props.isPlaying}
           playMode={props.playMode}
+          autoPlay={props.autoPlay}
           onPlayPause={props.onPlayPause}
           onPrev={props.onPrev}
           onNext={props.onNext}
           onCyclePlayMode={props.onCyclePlayMode}
+          onToggleAutoPlay={props.onToggleAutoPlay}
         />
         <div className="absolute left-1/2 -translate-x-1/2 max-w-[40%] flex items-center gap-2 pointer-events-auto">
           <span className="text-sm text-foreground truncate text-center">

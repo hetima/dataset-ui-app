@@ -1,15 +1,17 @@
 import { Button } from "@/components/ui/button";
-import { Play, Pause, SkipBack, SkipForward, Repeat1, ListEnd, StopCircle } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Repeat1, ListEnd, StopCircle, Square, SquareCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PlayMode } from "@/types";
 
 type Props = {
   isPlaying: boolean;
   playMode: PlayMode;
+  autoPlay: boolean;
   onPlayPause: () => void;
   onPrev: () => void;
   onNext: () => void;
   onCyclePlayMode: () => void;
+  onToggleAutoPlay: () => void;
 };
 
 const PLAY_MODE_ICON: Record<PlayMode, React.ReactNode> = {
@@ -21,10 +23,12 @@ const PLAY_MODE_ICON: Record<PlayMode, React.ReactNode> = {
 export function AudioControls({
   isPlaying,
   playMode,
+  autoPlay,
   onPlayPause,
   onPrev,
   onNext,
   onCyclePlayMode,
+  onToggleAutoPlay,
 }: Props) {
   const { t } = useTranslation();
   const playModeTitle: Record<PlayMode, string> = {
@@ -54,6 +58,16 @@ export function AudioControls({
       >
         {PLAY_MODE_ICON[playMode]}
         <span className="text-xs">{playModeLabel[playMode]}</span>
+      </Button>
+      <Button
+        variant={autoPlay ? "secondary" : "ghost"}
+        size="lg"
+        className="px-3 gap-1"
+        onClick={onToggleAutoPlay}
+        title={t("controls.autoPlayDescription")}
+      >
+        {autoPlay ? <SquareCheck className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+        <span className="text-xs">{t("controls.autoPlay")}</span>
       </Button>
     </div>
   );
