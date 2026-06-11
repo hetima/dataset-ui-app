@@ -48,6 +48,17 @@ function parseSongs(songs: MtdtFile["songs"]): Map<string, SongRecord> {
   return map;
 }
 
+/** ファイルパスを親フォルダとファイル名に分ける */
+export function splitFilePath(filePath: string): { folderPath: string; fileName: string } {
+  const normalized = filePath.replace(/\\/g, "/");
+  const slash = normalized.lastIndexOf("/");
+  if (slash < 0) return { folderPath: filePath, fileName: filePath };
+  return {
+    folderPath: filePath.slice(0, filePath.length - (normalized.length - slash)),
+    fileName: normalized.slice(slash + 1),
+  };
+}
+
 /** mtdt.json を読み込んで filename をキーとした songs マップを返す */
 export async function loadMtdt(folderPath: string): Promise<{ songsMap: Map<string, SongRecord>; raw: MtdtFile }> {
   const mtdtPath = await join(folderPath, "mtdt.json");
@@ -90,6 +101,54 @@ export async function saveMtdt(folderPath: string, tracks: Track[]): Promise<voi
   await writeTextFile(mtdtPath, JSON.stringify(output, null, 2));
 }
 
+/** Track.path の親フォルダごとに mtdt.json を更新する */
+export async function saveMtdtByTracks(tracks: Track[], extraFolderPaths: string[] = []): Promise<void> {
+  const groups = new Map<string, Track[]>();
+  for (const folderPath of extraFolderPaths) {
+    groups.set(folderPath, []);
+  }
+  for (const track of tracks) {
+    const { folderPath } = splitFilePath(track.path);
+    groups.set(folderPath, [...(groups.get(folderPath) ?? []), track]);
+  }
+
+  for (const [folderPath, folderTracks] of groups) {
+    const entries = await readDir(folderPath);
+    const existingAudioNames = new Set(
+      entries
+        .filter((entry) => entry.isFile && isAudioFile(entry.name))
+        .map((entry) => entry.name)
+    );
+
+    const mtdtPath = await join(folderPath, "mtdt.json");
+    let raw: MtdtFile = {};
+    try {
+      raw = JSON.parse(await readTextFile(mtdtPath));
+    } catch { /* 存在しない場合は新規作成 */ }
+
+    const existingMap = parseSongs(raw.songs);
+    const songs: Record<string, SongRecord> = {};
+    for (const [name, record] of existingMap) {
+      if (existingAudioNames.has(name)) songs[name] = record;
+    }
+
+    for (const track of folderTracks) {
+      const { fileName } = splitFilePath(track.path);
+      const existing = songs[fileName] ?? existingMap.get(fileName) ?? { filename: fileName };
+      songs[fileName] = {
+        ...existing,
+        filename: fileName,
+        good: track.good,
+        bad: track.bad,
+        ...(track.transcript ? { transcript: track.transcript } : {}),
+        ...(track.duration > 0 ? { duration: track.duration } : {}),
+      };
+    }
+
+    await writeTextFile(mtdtPath, JSON.stringify({ ...raw, songs }, null, 2));
+  }
+}
+
 /** saveLyricsData に渡す歌詞データ。指定したキーのみ書き換える */
 export type LyricsData = {
   lyrics?: string;
@@ -105,10 +164,7 @@ export type LyricsData = {
  *        （draft 系は mtdt.json のみ）
  */
 export async function saveLyricsData(filePath: string, data: LyricsData): Promise<void> {
-  const normalized = filePath.replace(/\\/g, "/");
-  const slash = normalized.lastIndexOf("/");
-  const folderPath = slash >= 0 ? filePath.slice(0, filePath.length - (normalized.length - slash)) : filePath;
-  const fileName = normalized.slice(slash + 1);
+  const { folderPath, fileName } = splitFilePath(filePath);
 
   // mtdt.json をそのまま読み込み、該当レコードの指定キーのみ書き換える
   const mtdtPath = await join(folderPath, "mtdt.json");
@@ -338,8 +394,8 @@ export type MoveRatedResult =
 /**
  * good または bad のトラックをサブフォルダに移動する。
  * - 移動先に同名ファイルが存在する場合はエラーを返し何もしない
- * - mtdt.json は移動先にマージ保存、元フォルダからレコードを削除
- * - 移動完了後に元フォルダを scanFolder してリロード用の Track[] を返す
+ * - mtdt.json は Track.path の親フォルダを基準に更新する
+ * - 移動完了後は移動済みトラックを除いた Track[] を返す
  */
 /** 音声ファイルに付随する可能性のあるサイドカーファイルの拡張子 */
 const SIDECAR_SUFFIXES = [".txt", ".lyrics.txt", ".json"];
@@ -355,56 +411,40 @@ async function existingSidecars(folderPath: string, audioName: string): Promise<
 }
 
 export async function moveRatedFiles(
-  folderPath: string,
   tracks: Track[],
   rating: "good" | "bad",
   subFolderName: string,
-): Promise<MoveRatedResult & { reloadedTracks?: Track[] }> {
+): Promise<MoveRatedResult & { tracks?: Track[] }> {
   const targets = tracks.filter((t) => (rating === "good" ? t.good : t.bad));
-  if (targets.length === 0) return { ok: true, reloadedTracks: tracks };
-
-  const destDir = await join(folderPath, subFolderName);
+  if (targets.length === 0) return { ok: true, tracks };
 
   // 衝突チェック（音声ファイル本体のみ。サイドカーは上書き許容）
   const conflicts = (await Promise.all(targets.map(async (t) => {
-    const destPath = await join(destDir, t.name);
-    return (await exists(destPath)) ? t.name : null;
-  }))).filter((name): name is string => name !== null);
+    const { folderPath, fileName } = splitFilePath(t.path);
+    const destPath = await join(folderPath, subFolderName, fileName);
+    return (await exists(destPath)) ? t.path : null;
+  }))).filter((path): path is string => path !== null);
   if (conflicts.length > 0) return { ok: false, conflicts };
 
-  // サブフォルダ作成（なければ）
-  await mkdir(destDir, { recursive: true });
-
   // 移動（音声ファイル本体 + 付随ファイル）
+  const movedTracks: Track[] = [];
+  const sourceFolders = new Set<string>();
   for (const t of targets) {
-    await rename(t.path, await join(destDir, t.name));
+    const { folderPath, fileName } = splitFilePath(t.path);
+    sourceFolders.add(folderPath);
+    const destDir = await join(folderPath, subFolderName);
+    const destPath = await join(destDir, fileName);
+    await mkdir(destDir, { recursive: true });
+    await rename(t.path, destPath);
     for (const sidecarPath of await existingSidecars(folderPath, t.name)) {
       const sidecarName = sidecarPath.replace(/\\/g, "/").split("/").pop()!;
       await rename(sidecarPath, await join(destDir, sidecarName));
     }
+    movedTracks.push({ ...t, path: destPath });
   }
 
-  // 移動先 mtdt.json にマージ保存
-  const { songsMap: destSongs, raw: destRaw } = await loadMtdt(destDir);
-  const destSongsOut: Record<string, SongRecord> = {};
-  for (const [k, v] of destSongs) destSongsOut[k] = v;
-  for (const t of targets) {
-    const existing = destSongs.get(t.name) ?? { filename: t.name };
-    destSongsOut[t.name] = {
-      ...existing,
-      filename: t.name,
-      good: t.good,
-      bad: t.bad,
-      ...(t.transcript ? { transcript: t.transcript } : {}),
-      ...(t.duration > 0 ? { duration: t.duration } : {}),
-    };
-  }
-  const destMtdtPath = await join(destDir, "mtdt.json");
-  await writeTextFile(destMtdtPath, JSON.stringify({ ...destRaw, songs: destSongsOut }, null, 2));
-
-  // 元フォルダの mtdt.json から移動済みレコードを除いて保存
   const remaining = tracks.filter((t) => !(rating === "good" ? t.good : t.bad));
-  await saveMtdt(folderPath, remaining);
+  await saveMtdtByTracks([...remaining, ...movedTracks], [...sourceFolders]);
 
-  return { ok: true, reloadedTracks: remaining };
+  return { ok: true, tracks: remaining };
 }

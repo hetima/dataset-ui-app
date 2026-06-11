@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import { ChevronDown, ChevronRight, Folder, FolderClosed, RefreshCw, Trash2 } from "lucide-react";
@@ -37,6 +37,18 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
   const [hasAudio, setHasAudio] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const hasChildren = children !== null && children.length > 0;
+
+  /** 子フォルダ一覧と音声ファイル有無を再スキャンする */
+  const scanNode = useCallback(async () => {
+    const entries = await readDir(path);
+    const childPaths = await Promise.all(
+      entries
+        .filter((entry) => entry.isDirectory)
+        .map((entry) => join(path, entry.name))
+    );
+    setChildren(childPaths.sort((a, b) => folderName(a).localeCompare(folderName(b))));
+    setHasAudio(entries.some((entry) => entry.isFile && isAudioFile(entry.name)));
+  }, [path]);
 
   // 行クリック: オーディオを含めばロード（トースト抑制）。
   // 含まなければ、サブフォルダがあれば展開/格納のみ行い、無ければ何もしない。
@@ -100,15 +112,18 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
               <span className="w-4 h-4 shrink-0" />
             )}
             {hasAudio ? (
-              <Folder className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-            ) : (
               <FolderClosed className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <Folder className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
             )}
             <span className="truncate">{folderName(path)}</span>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={() => onLoad(path)}>
+          <ContextMenuItem onClick={() => scanNode().catch(() => {
+            setChildren([]);
+            setHasAudio(false);
+          })}>
             <RefreshCw className="w-4 h-4 mr-2" />
             {t("sidebar.reload")}
           </ContextMenuItem>

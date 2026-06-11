@@ -11,7 +11,7 @@ import type { AppLanguage } from "../lib/i18n";
 import type { AppTheme } from "../lib/theme";
 import { reducer, initialState } from "../reducer";
 import { PlayMode } from "../types";
-import { scanFolder, saveMtdt, moveRatedFiles, getFileSize, loadTrackFromFile } from "../lib/audio";
+import { scanFolder, saveMtdtByTracks, moveRatedFiles, getFileSize, loadTrackFromFile } from "../lib/audio";
 import { Play, Settings, Music } from "lucide-react";
 import { Header } from "../components/Header";
 import { PlayerSidebar } from "../components/PlayerSidebar";
@@ -77,7 +77,6 @@ export function PlayerView() {
   const [isMoving, setIsMoving] = useState(false);
   const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const currentFolderRef = useRef<string | null>(null);
   const tracksRef = useRef(state.tracks);
   const visibleTrackIndicesRef = useRef<number[]>([]);
   const syncToggleRef = useRef(syncToggle);
@@ -213,9 +212,9 @@ export function PlayerView() {
 
   // 現在のフォルダを mtdt.json に保存
   const saveCurrentFolder = useCallback(async () => {
-    if (currentFolderRef.current && tracksRef.current.length > 0) {
+    if (tracksRef.current.length > 0) {
       try {
-        await saveMtdt(currentFolderRef.current, tracksRef.current);
+        await saveMtdtByTracks(tracksRef.current);
       } catch (e) {
         console.error("saveMtdt failed:", e);
         return false;
@@ -347,18 +346,16 @@ export function PlayerView() {
 
   // good/bad ファイルをサブフォルダに移動してリロード
   const handleMoveRated = useCallback(async (rating: "good" | "bad") => {
-    const folder = currentFolderRef.current;
-    if (!folder) return;
     const subFolderName = rating === "good" ? goodFolderName : badFolderName;
     setIsMoving(true);
     try {
-      const result = await moveRatedFiles(folder, tracksRef.current, rating, subFolderName);
+      const result = await moveRatedFiles(tracksRef.current, rating, subFolderName);
       if (!result.ok) {
         alert(t("player.conflictMessage", { files: result.conflicts.join("\n") }));
         return;
       }
-      if (result.reloadedTracks) {
-        dispatch({ type: "SET_TRACKS", tracks: result.reloadedTracks });
+      if (result.tracks) {
+        dispatch({ type: "SET_TRACKS", tracks: result.tracks });
       }
     } finally {
       setIsMoving(false);
@@ -409,7 +406,6 @@ export function PlayerView() {
       if (!silent) toast.error(t("player.noAudioInFolder"));
       return false;
     }
-    currentFolderRef.current = folder;
     dispatch({ type: "SET_TRACKS", tracks });
     const settings = await AppSettings.load();
     const updated = await settings.playerView.pushRecentFolder(folder);
@@ -700,9 +696,6 @@ export function PlayerView() {
   };
 
   const currentTrack = state.currentIndex !== null ? state.tracks[state.currentIndex] : null;
-  const nowPlayingFolder = currentFolderRef.current && state.tracks.length > 0
-    ? `${currentFolderRef.current.replace(/\\/g, "/").split("/").pop() ?? ""} (${t("player.itemCount", { count: state.tracks.length })})`
-    : null;
 
   // 詳細パネル用のファイルサイズは選択時に取得する
   useEffect(() => {
@@ -756,7 +749,6 @@ export function PlayerView() {
             currentTime={currentTime}
             duration={currentTrack?.duration ?? 0}
             nowPlayingName={currentTrack?.name ?? null}
-            nowPlayingFolder={nowPlayingFolder}
             searchQuery={state.searchQuery}
             onPlayPause={handlePlayPause}
             onPrev={handlePrev}
