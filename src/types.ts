@@ -15,6 +15,7 @@ export type Track = {
   title: string;
   album: string;
   artist: string;
+  dirty: boolean;
 };
 
 export type PlayMode = "stop" | "continuous" | "repeat";
@@ -42,7 +43,8 @@ export type Action =
   | { type: "SET_BAD"; index: number }
   | { type: "CLEAR_RATING"; index: number }
   | { type: "SET_SONG_INFO_TRACK"; track: Track | null }
-  | { type: "UPDATE_LYRICS"; path: string; lyrics: string; draftLyrics: string; syncedLyrics: string; draftSyncedLyrics: string }
+  | { type: "UPDATE_LYRICS"; path: string; lyrics: string; draftLyrics: string; syncedLyrics: string; draftSyncedLyrics: string; dirty?: boolean }
   | { type: "UPDATE_TRANSCRIPT"; index: number; transcript: string }
   | { type: "RESTORE_TRANSCRIPT"; index: number }
+  | { type: "MARK_TRACKS_SAVED"; paths: string[] }
   | { type: "COMMIT_TRANSCRIPTS_TO_TEMP" };

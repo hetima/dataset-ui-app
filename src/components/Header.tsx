@@ -15,6 +15,8 @@ type Props = {
   currentTime: number;
   duration: number;
   nowPlayingName: string | null;
+  nowPlayingFolder: string | null;
+  dirtyCount: number;
   searchQuery: string;
   volume: number;
   onPlayPause: () => void;
@@ -27,6 +29,7 @@ type Props = {
   onVolumeChange: (v: number) => void;
   onToggleSidebar: () => void;
   onToggleDetailPanel: () => void;
+  onSaveDirty: () => void;
 };
 
 export function Header(props: Props) {
@@ -35,7 +38,7 @@ export function Header(props: Props) {
 
   return (
     <header className="h-20 flex flex-col justify-start gap-1 px-4 border-b bg-background shrink-0">
-      {/* 1段目: ボタン群 + ボリューム */}
+      {/* 1段目: ボタン群 + フォルダ情報 + ボリューム */}
       <div className="relative flex items-center gap-2">
         <AudioControls
           isPlaying={props.isPlaying}
@@ -45,6 +48,16 @@ export function Header(props: Props) {
           onNext={props.onNext}
           onCyclePlayMode={props.onCyclePlayMode}
         />
+        <div className="absolute left-1/2 -translate-x-1/2 max-w-[40%] flex items-center gap-2 pointer-events-auto">
+          <span className="text-sm text-foreground truncate text-center">
+            {props.nowPlayingFolder ?? ""}
+          </span>
+          {props.dirtyCount > 0 && (
+            <Button variant="secondary" size="sm" className="h-6 px-2 text-xs shrink-0" onClick={props.onSaveDirty}>
+              {t("player.unsavedChanges")}
+            </Button>
+          )}
+        </div>
         <div className="flex items-center gap-2 w-56 shrink-0 ml-auto">
           <Volume2 className="w-4 h-4 text-muted-foreground shrink-0" />
           <Slider

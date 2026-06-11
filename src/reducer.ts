@@ -47,21 +47,21 @@ export function reducer(state: State, action: Action): State {
       return {
         ...state,
         tracks: state.tracks.map((t, i) =>
-          i === action.index ? { ...t, good: !t.good, bad: false } : t
+          i === action.index ? { ...t, good: !t.good, bad: false, dirty: true } : t
         ),
       };
     case "SET_BAD":
       return {
         ...state,
         tracks: state.tracks.map((t, i) =>
-          i === action.index ? { ...t, bad: !t.bad, good: false } : t
+          i === action.index ? { ...t, bad: !t.bad, good: false, dirty: true } : t
         ),
       };
     case "CLEAR_RATING":
       return {
         ...state,
         tracks: state.tracks.map((t, i) =>
-          i === action.index ? { ...t, good: false, bad: false } : t
+          i === action.index ? { ...t, good: false, bad: false, dirty: true } : t
         ),
       };
     case "SET_SONG_INFO_TRACK":
@@ -70,20 +70,29 @@ export function reducer(state: State, action: Action): State {
       return {
         ...state,
         tracks: state.tracks.map((t, i) =>
-          i === action.index ? { ...t, transcript: action.transcript } : t
+          i === action.index ? { ...t, transcript: action.transcript, dirty: action.transcript !== t.tempTranscript } : t
         ),
       };
     case "RESTORE_TRANSCRIPT":
       return {
         ...state,
         tracks: state.tracks.map((t, i) =>
-          i === action.index ? { ...t, transcript: t.tempTranscript } : t
+          i === action.index ? { ...t, transcript: t.tempTranscript, dirty: false } : t
         ),
       };
+    case "MARK_TRACKS_SAVED": {
+      const savedPaths = new Set(action.paths);
+      return {
+        ...state,
+        tracks: state.tracks.map((t) =>
+          savedPaths.has(t.path) ? { ...t, tempTranscript: t.transcript, dirty: false } : t
+        ),
+      };
+    }
     case "COMMIT_TRANSCRIPTS_TO_TEMP":
       return {
         ...state,
-        tracks: state.tracks.map((t) => ({ ...t, tempTranscript: t.transcript })),
+        tracks: state.tracks.map((t) => ({ ...t, tempTranscript: t.transcript, dirty: false })),
       };
     case "UPDATE_LYRICS": {
       // path が一致するプレイリスト内トラックと songInfoTrack の両方を同期更新
@@ -92,11 +101,11 @@ export function reducer(state: State, action: Action): State {
       return {
         ...state,
         tracks: state.tracks.map((t) =>
-          t.path === action.path ? { ...t, ...patch } : t
+          t.path === action.path ? { ...t, ...patch, dirty: action.dirty ?? false } : t
         ),
         songInfoTrack:
           state.songInfoTrack && state.songInfoTrack.path === action.path
-            ? { ...state.songInfoTrack, ...patch }
+            ? { ...state.songInfoTrack, ...patch, dirty: action.dirty ?? false }
             : state.songInfoTrack,
       };
     }

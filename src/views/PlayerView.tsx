@@ -1,4 +1,4 @@
-import { useReducer, useRef, useEffect, useCallback, useState } from "react";
+import { useReducer, useRef, useEffect, useCallback, useMemo, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
@@ -11,7 +11,7 @@ import type { AppLanguage } from "../lib/i18n";
 import type { AppTheme } from "../lib/theme";
 import { reducer, initialState } from "../reducer";
 import { PlayMode } from "../types";
-import { scanFolder, saveMtdtByTracks, moveRatedFiles, getFileSize, loadTrackFromFile } from "../lib/audio";
+import { scanFolder, saveMtdtByTracks, saveLyricsData, moveRatedFiles, getFileSize, loadTrackFromFile, splitFilePath } from "../lib/audio";
 import { Play, Settings, Music } from "lucide-react";
 import { Header } from "../components/Header";
 import { PlayerSidebar } from "../components/PlayerSidebar";
@@ -215,6 +215,12 @@ export function PlayerView() {
     if (tracksRef.current.length > 0) {
       try {
         await saveMtdtByTracks(tracksRef.current);
+        await Promise.all(tracksRef.current.filter((track) => track.dirty).map((track) => saveLyricsData(track.path, {
+          lyrics: track.lyrics,
+          draftLyrics: track.draftLyrics,
+          syncedLyrics: track.syncedLyrics,
+          draftSyncedLyrics: track.draftSyncedLyrics,
+        })));
       } catch (e) {
         console.error("saveMtdt failed:", e);
         return false;
@@ -224,6 +230,28 @@ export function PlayerView() {
     }
     return false;
   }, []);
+
+  // dirty なトラックだけ保存して dirty フラグを解除する
+  const saveDirtyTracks = useCallback(async () => {
+    const dirtyTracks = tracksRef.current.filter((track) => track.dirty);
+    if (dirtyTracks.length === 0) return false;
+    try {
+      await saveMtdtByTracks(dirtyTracks);
+      await Promise.all(dirtyTracks.map((track) => saveLyricsData(track.path, {
+        lyrics: track.lyrics,
+        draftLyrics: track.draftLyrics,
+        syncedLyrics: track.syncedLyrics,
+        draftSyncedLyrics: track.draftSyncedLyrics,
+      })));
+      dispatch({ type: "MARK_TRACKS_SAVED", paths: dirtyTracks.map((track) => track.path) });
+      toast.success(t("player.savedItems", { count: dirtyTracks.length }));
+      return true;
+    } catch (e) {
+      console.error("save dirty tracks failed:", e);
+      toast.error(String(e));
+      return false;
+    }
+  }, [t]);
 
   // 情報パネルの編集ボタン → 現在トラックを曲情報タブで開く
   const handleEditSongInfo = useCallback(() => {
@@ -236,6 +264,13 @@ export function PlayerView() {
   const handleLyricsSaved = useCallback(
     (path: string, data: { lyrics: string; draftLyrics: string; syncedLyrics: string; draftSyncedLyrics: string }) => {
       dispatch({ type: "UPDATE_LYRICS", path, ...data });
+    },
+    []
+  );
+
+  const handleLyricsChange = useCallback(
+    (path: string, data: { lyrics: string; draftLyrics: string; syncedLyrics: string; draftSyncedLyrics: string }) => {
+      dispatch({ type: "UPDATE_LYRICS", path, ...data, dirty: true });
     },
     []
   );
@@ -696,6 +731,15 @@ export function PlayerView() {
   };
 
   const currentTrack = state.currentIndex !== null ? state.tracks[state.currentIndex] : null;
+  const dirtyCount = state.tracks.filter((track) => track.dirty).length;
+  const nowPlayingFolder = useMemo(() => {
+    if (state.tracks.length === 0) return null;
+    const folders = new Set(state.tracks.map((track) => splitFilePath(track.path).folderPath));
+    const folderLabel = folders.size === 1
+      ? [...folders][0].replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? ""
+      : t("player.folderCount", { count: folders.size });
+    return `${folderLabel} (${t("player.itemCount", { count: state.tracks.length })})`;
+  }, [state.tracks, t]);
 
   // 詳細パネル用のファイルサイズは選択時に取得する
   useEffect(() => {
@@ -749,6 +793,8 @@ export function PlayerView() {
             currentTime={currentTime}
             duration={currentTrack?.duration ?? 0}
             nowPlayingName={currentTrack?.name ?? null}
+            nowPlayingFolder={nowPlayingFolder}
+            dirtyCount={dirtyCount}
             searchQuery={state.searchQuery}
             onPlayPause={handlePlayPause}
             onPrev={handlePrev}
@@ -762,6 +808,7 @@ export function PlayerView() {
             onVolumeChange={handleVolumeChange}
             onToggleSidebar={() => setSidebarMode((m) => m === "icon" ? "open" : "icon")}
             onToggleDetailPanel={handleToggleDetailPanel}
+            onSaveDirty={saveDirtyTracks}
           />
           <div className="flex flex-1 overflow-hidden">
             <PlayerSidebar
@@ -837,6 +884,7 @@ export function PlayerView() {
           <SongInfoView
             track={state.songInfoTrack}
             onSaved={handleLyricsSaved}
+            onLyricsChange={handleLyricsChange}
             currentTrack={currentTrack}
             isPlaying={state.isPlaying}
             onTogglePlay={handleTogglePlayForSongInfo}

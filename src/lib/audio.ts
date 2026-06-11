@@ -238,6 +238,7 @@ export async function scanFolder(folderPath: string): Promise<Track[]> {
       title: "",
       album: "",
       artist: "",
+      dirty: false,
     });
   }
 
@@ -331,6 +332,7 @@ export async function loadTrackFromFile(filePath: string): Promise<Track | null>
     title: "",
     album: "",
     artist: "",
+    dirty: false,
   };
 
   const { songsMap } = await loadMtdt(folderPath);

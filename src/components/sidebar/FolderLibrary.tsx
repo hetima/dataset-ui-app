@@ -112,9 +112,9 @@ function FolderNode({ path, depth, isRoot, onLoad, onRemove }: FolderNodeProps) 
               <span className="w-4 h-4 shrink-0" />
             )}
             {hasAudio ? (
-              <FolderClosed className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-            ) : (
               <Folder className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <FolderClosed className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
             )}
             <span className="truncate">{folderName(path)}</span>
           </div>

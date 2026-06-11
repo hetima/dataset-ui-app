@@ -45,6 +45,11 @@ type Props = {
     path: string,
     data: { lyrics: string; draftLyrics: string; syncedLyrics: string; draftSyncedLyrics: string }
   ) => void;
+  /** 編集中の歌詞をプレイヤー側 state に反映する */
+  onLyricsChange: (
+    path: string,
+    data: { lyrics: string; draftLyrics: string; syncedLyrics: string; draftSyncedLyrics: string }
+  ) => void;
   /** 現在プレイヤーで再生/選択中のトラック */
   currentTrack: Track | null;
   isPlaying: boolean;
@@ -58,7 +63,7 @@ type Props = {
   canSkip: boolean;
 };
 
-export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onTogglePlay, onPrev, onNext, canSkip }: Props) {
+export function SongInfoView({ track, onSaved, onLyricsChange, currentTrack, isPlaying, onTogglePlay, onPrev, onNext, canSkip }: Props) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<LyricsTab>("lyrics");
   const [lyrics, setLyrics] = useState("");
@@ -105,6 +110,19 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
     draftLyrics: setDraftLyrics,
     syncedLyrics: setSyncedLyrics,
     draftSyncedLyrics: setDraftSyncedLyrics,
+  };
+
+  const updateLyricsField = (key: LyricsKey, value: string) => {
+    if (!track) return;
+    const next = {
+      lyrics,
+      draftLyrics,
+      syncedLyrics,
+      draftSyncedLyrics,
+      [key]: value,
+    };
+    lyricsSetters[key](value);
+    onLyricsChange(track.path, next);
   };
 
   const geniusDisabled = geniusApiKey.trim() === "";
@@ -184,12 +202,25 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
 
   // 検索結果の採用。lyrics / synced 両方を Actual または Draft 側へ流し込む
   const handleApplyResult = (result: LyricsResult, draft: boolean) => {
+    if (!track) return;
     if (draft) {
       setDraftLyrics(result.lyrics);
       setDraftSyncedLyrics(result.syncedLyrics ?? "");
+      onLyricsChange(track.path, {
+        lyrics,
+        draftLyrics: result.lyrics,
+        syncedLyrics,
+        draftSyncedLyrics: result.syncedLyrics ?? "",
+      });
     } else {
       setLyrics(result.lyrics);
       setSyncedLyrics(result.syncedLyrics ?? "");
+      onLyricsChange(track.path, {
+        lyrics: result.lyrics,
+        draftLyrics,
+        syncedLyrics: result.syncedLyrics ?? "",
+        draftSyncedLyrics,
+      });
     }
   };
 
@@ -311,12 +342,12 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
           <LyricsPane
             label={t(`songInfo.paneLabel.${TAB_PANES[tab].leftLabel}`)}
             value={lyricsValues[TAB_PANES[tab].left]}
-            onChange={lyricsSetters[TAB_PANES[tab].left]}
+            onChange={(value) => updateLyricsField(TAB_PANES[tab].left, value)}
           />
           <LyricsPane
             label={t(`songInfo.paneLabel.${TAB_PANES[tab].rightLabel}`)}
             value={lyricsValues[TAB_PANES[tab].right]}
-            onChange={lyricsSetters[TAB_PANES[tab].right]}
+            onChange={(value) => updateLyricsField(TAB_PANES[tab].right, value)}
           />
         </div>
       </div>
