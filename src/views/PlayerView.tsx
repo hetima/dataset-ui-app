@@ -17,8 +17,10 @@ import { Header } from "../components/Header";
 import { PlayerSidebar } from "../components/PlayerSidebar";
 import { PlaylistTable } from "../components/PlaylistTable";
 import { DetailPanel } from "../components/DetailPanel";
+import { LyricsSearchSheet } from "../components/LyricsSearchSheet";
 import { SettingsView } from "./SettingsView";
 import { SongInfoView } from "./SongInfoView";
+import type { LyricsResult, LyricsSource } from "../lib/lyrics";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import "../App.css";
@@ -80,6 +82,9 @@ export function PlayerView() {
   const [isLoading, setIsLoading] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
+  const [lyricsSearchOpen, setLyricsSearchOpen] = useState(false);
+  const [lyricsSearchTitle, setLyricsSearchTitle] = useState("");
+  const [lyricsSearchArtist, setLyricsSearchArtist] = useState("");
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tracksRef = useRef(state.tracks);
   const visibleTrackIndicesRef = useRef<number[]>([]);
@@ -390,6 +395,26 @@ export function PlayerView() {
     const settings = await AppSettings.load();
     await settings.setLyricsUseYtmusic(v);
   }, []);
+
+  const handleOpenDetailLyricsSearch = useCallback((title: string, artist: string) => {
+    setLyricsSearchTitle(title);
+    setLyricsSearchArtist(artist);
+    setLyricsSearchOpen(true);
+  }, []);
+
+  const handleApplyDetailLyricsSearch = useCallback((result: LyricsResult, draft: boolean) => {
+    if (state.selectedIndex === null) return;
+    const track = state.tracks[state.selectedIndex];
+    dispatch({
+      type: "UPDATE_LYRICS",
+      path: track.path,
+      lyrics: draft ? track.lyrics : result.lyrics,
+      draftLyrics: draft ? result.lyrics : track.draftLyrics,
+      syncedLyrics: draft ? track.syncedLyrics : result.syncedLyrics ?? track.syncedLyrics,
+      draftSyncedLyrics: draft ? result.syncedLyrics ?? track.draftSyncedLyrics : track.draftSyncedLyrics,
+      dirty: true,
+    });
+  }, [state.selectedIndex, state.tracks]);
 
   const handleGenerateTranscript = useCallback(async () => {
     if (state.selectedIndex === null || !llmBaseUrl.trim()) return;
@@ -790,6 +815,12 @@ export function PlayerView() {
 
   const currentTrack = state.currentIndex !== null ? state.tracks[state.currentIndex] : null;
   const selectedTrack = state.selectedIndex !== null ? state.tracks[state.selectedIndex] : null;
+  const geniusDisabled = geniusApiKey.trim() === "";
+  const lyricsSearchSources: LyricsSource[] = [
+    ...(lyricsUseGenius && !geniusDisabled ? (["genius"] as const) : []),
+    ...(lyricsUseLrclib ? (["lrclib"] as const) : []),
+    ...(lyricsUseYtmusic ? (["ytmusic"] as const) : []),
+  ];
   const dirtyCount = state.tracks.filter((track) => track.dirty).length;
   const nowPlayingFolder = useMemo(() => {
     if (state.tracks.length === 0) return null;
@@ -833,6 +864,15 @@ export function PlayerView() {
           </DialogHeader>
         </DialogContent>
       </Dialog>
+      <LyricsSearchSheet
+        open={lyricsSearchOpen}
+        onOpenChange={setLyricsSearchOpen}
+        title={lyricsSearchTitle}
+        artist={lyricsSearchArtist}
+        sources={lyricsSearchSources}
+        geniusApiKey={geniusApiKey}
+        onApply={handleApplyDetailLyricsSearch}
+      />
       <audio
         ref={audioRef}
         onEnded={handleEnded}
@@ -941,12 +981,21 @@ export function PlayerView() {
                 onEditSongInfo={handleEditSongInfo}
                 onTranscriptChange={(index, transcript) => dispatch({ type: "UPDATE_TRANSCRIPT", index, transcript })}
                 onLyricsChange={(index, lyrics) => dispatch({ type: "UPDATE_DETAIL_LYRICS", index, lyrics })}
+                onLyricsSearch={handleOpenDetailLyricsSearch}
+                onUseGeniusChange={handleLyricsUseGeniusChange}
+                onUseLrclibChange={handleLyricsUseLrclibChange}
+                onUseYtmusicChange={handleLyricsUseYtmusicChange}
                 onGenerateTranscript={handleGenerateTranscript}
                 onRestoreTranscript={() => state.selectedIndex !== null && dispatch({ type: "RESTORE_TRANSCRIPT", index: state.selectedIndex })}
                 onRestoreLyrics={() => state.selectedIndex !== null && dispatch({ type: "RESTORE_LYRICS", index: state.selectedIndex })}
                 canGenerateTranscript={Boolean(llmBaseUrl.trim())}
                 canRestoreTranscript={selectedTrack ? selectedTrack.transcript !== selectedTrack.tempTranscript : false}
                 canRestoreLyrics={selectedTrack ? selectedTrack.lyrics !== selectedTrack.tempLyrics : false}
+                lyricsSearchDisabled={lyricsSearchSources.length === 0}
+                geniusDisabled={geniusDisabled}
+                useGenius={lyricsUseGenius}
+                useLrclib={lyricsUseLrclib}
+                useYtmusic={lyricsUseYtmusic}
                 isGeneratingTranscript={isGeneratingTranscript}
               />
             </div>

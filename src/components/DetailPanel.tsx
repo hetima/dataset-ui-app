@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Track } from "@/types";
 import { formatSize, formatDuration } from "@/lib/audio";
 import { Button } from "@/components/ui/button";
+import { LyricsSearchButton } from "@/components/LyricsSearchButton";
 import { ThumbsUp, ThumbsDown, Pencil, Undo2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -13,16 +14,25 @@ type Props = {
   onEditSongInfo: () => void;
   onTranscriptChange: (index: number, transcript: string) => void;
   onLyricsChange: (index: number, lyrics: string) => void;
+  onLyricsSearch: (title: string, artist: string) => void;
+  onUseGeniusChange: (v: boolean) => void;
+  onUseLrclibChange: (v: boolean) => void;
+  onUseYtmusicChange: (v: boolean) => void;
   onGenerateTranscript: () => void;
   onRestoreTranscript: () => void;
   onRestoreLyrics: () => void;
   canGenerateTranscript: boolean;
   canRestoreTranscript: boolean;
   canRestoreLyrics: boolean;
+  lyricsSearchDisabled: boolean;
+  geniusDisabled: boolean;
+  useGenius: boolean;
+  useLrclib: boolean;
+  useYtmusic: boolean;
   isGeneratingTranscript: boolean;
 };
 
-export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSongInfo, onTranscriptChange, onLyricsChange, onGenerateTranscript, onRestoreTranscript, onRestoreLyrics, canGenerateTranscript, canRestoreTranscript, canRestoreLyrics, isGeneratingTranscript }: Props) {
+export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSongInfo, onTranscriptChange, onLyricsChange, onLyricsSearch, onUseGeniusChange, onUseLrclibChange, onUseYtmusicChange, onGenerateTranscript, onRestoreTranscript, onRestoreLyrics, canGenerateTranscript, canRestoreTranscript, canRestoreLyrics, lyricsSearchDisabled, geniusDisabled, useGenius, useLrclib, useYtmusic, isGeneratingTranscript }: Props) {
   const { t } = useTranslation();
   const [transcript, setTranscript] = useState(track?.transcript ?? "");
   const [lyrics, setLyrics] = useState(track?.lyrics ?? "");
@@ -120,16 +130,32 @@ export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSo
         <div className="min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1 min-w-0">
             <p className="text-xs text-muted-foreground shrink-0">{t("details.lyrics")}</p>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              disabled={!canRestoreLyrics}
-              onClick={onRestoreLyrics}
-              title={t("details.restoreTranscript")}
-            >
-              <Undo2 className="w-3.5 h-3.5" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <LyricsSearchButton
+                size="sm"
+                disabled={lyricsSearchDisabled}
+                geniusDisabled={geniusDisabled}
+                useGenius={useGenius}
+                useLrclib={useLrclib}
+                useYtmusic={useYtmusic}
+                defaultTitle={track.title || track.name.replace(/\.[^.]+$/, "")}
+                defaultArtist={track.artist}
+                onSearch={onLyricsSearch}
+                onUseGeniusChange={onUseGeniusChange}
+                onUseLrclibChange={onUseLrclibChange}
+                onUseYtmusicChange={onUseYtmusicChange}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                disabled={!canRestoreLyrics}
+                onClick={onRestoreLyrics}
+                title={t("details.restoreTranscript")}
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
           </div>
           <textarea
             value={lyrics}

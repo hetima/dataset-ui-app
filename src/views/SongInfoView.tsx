@@ -5,14 +5,11 @@ import { Track } from "@/types";
 import { saveLyricsData } from "@/lib/audio";
 import { AppSettings } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Menu, MenuTrigger, MenuContent, MenuItem, MenuSeparator } from "@/components/ui/menu";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { LyricsSearchSheet } from "@/components/LyricsSearchSheet";
+import { LyricsSearchButton } from "@/components/LyricsSearchButton";
 import type { LyricsResult, LyricsSource } from "@/lib/lyrics";
 import { cn } from "@/lib/utils";
-import { Play, Pause, Square, SkipBack, SkipForward, ChevronDown, Music2, ListMusic, SwatchBook, Hammer } from "lucide-react";
+import { Play, Pause, Square, SkipBack, SkipForward, Music2, ListMusic, SwatchBook, Hammer } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type LyricsTab = "lyrics" | "synced" | "actual" | "draft";
@@ -79,10 +76,6 @@ export function SongInfoView({ track, onSaved, onLyricsChange, currentTrack, isP
   // 実際に検索に使う曲名 / アーティスト（通常はトラック値、カスタム検索時はダイアログ入力値）
   const [searchTitle, setSearchTitle] = useState("");
   const [searchArtist, setSearchArtist] = useState("");
-  // カスタム検索ワード入力ダイアログ
-  const [customOpen, setCustomOpen] = useState(false);
-  const [customTitle, setCustomTitle] = useState("");
-  const [customArtist, setCustomArtist] = useState("");
 
   // 対象トラックが切り替わったら各 textarea を同期する
   useEffect(() => {
@@ -178,25 +171,9 @@ export function SongInfoView({ track, onSaved, onLyricsChange, currentTrack, isP
   // トラックから導出する既定の曲名（title 空ならファイル名・拡張子抜き）
   const defaultTitle = track.title || track.name.replace(/\.[^.]+$/, "");
 
-  // 通常検索（トラックの title/artist）を開く
-  const handleOpenSearch = () => {
-    setSearchTitle(defaultTitle);
-    setSearchArtist(track.artist);
-    setSearchOpen(true);
-  };
-
-  // カスタム検索ダイアログを開く（初期値はトラックの値）
-  const handleOpenCustom = () => {
-    setCustomTitle(defaultTitle);
-    setCustomArtist(track.artist);
-    setCustomOpen(true);
-  };
-
-  // カスタム検索の確定。入力した title/artist で検索を開始する
-  const handleCustomSubmit = () => {
-    setCustomOpen(false);
-    setSearchTitle(customTitle);
-    setSearchArtist(customArtist);
+  const handleOpenSearch = (title: string, artist: string) => {
+    setSearchTitle(title);
+    setSearchArtist(artist);
     setSearchOpen(true);
   };
 
@@ -275,63 +252,19 @@ export function SongInfoView({ track, onSaved, onLyricsChange, currentTrack, isP
             <TabGroup tabs={["actual", "draft"]} active={tab} onSelect={setTab} t={t} />
           </div>
           <div className="flex items-center gap-2">
-            {/* 歌詞検索ボタングループ（本体 + ▼でソース選択） */}
-            <div className="flex items-stretch">
-              <Button
-                variant="outline"
-                className="rounded-r-none border-r-0 text-sm"
-                disabled={searchSources.length === 0}
-                onClick={handleOpenSearch}
-              >
-                {t("songInfo.searchLyrics")}
-              </Button>
-              <Menu>
-                <MenuTrigger
-                  render={
-                    <Button
-                      variant="outline"
-                      className="rounded-l-none px-2 text-sm"
-                      title={t("songInfo.searchSources")}
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </Button>
-                  }
-                />
-                <MenuContent align="end" className="min-w-44">
-                  <MenuItem
-                    closeOnClick={false}
-                    onClick={() => handleUseYtmusicChange(!useYtmusic)}
-                  >
-                    <Checkbox checked={useYtmusic} />
-                    <span className="flex-1">YTMusic</span>
-                  </MenuItem>
-                  <MenuItem
-                    closeOnClick={false}
-                    disabled={geniusDisabled}
-                    onClick={() => !geniusDisabled && handleUseGeniusChange(!useGenius)}
-                  >
-                    <Checkbox checked={useGenius} disabled={geniusDisabled} />
-                    <span className="flex-1">Genius</span>
-                    {geniusDisabled && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {t("songInfo.sourceGeniusHint")}
-                      </span>
-                    )}
-                  </MenuItem>
-                  <MenuItem
-                    closeOnClick={false}
-                    onClick={() => handleUseLrclibChange(!useLrclib)}
-                  >
-                    <Checkbox checked={useLrclib} />
-                    <span className="flex-1">LRCLIB</span>
-                  </MenuItem>
-                  <MenuSeparator />
-                  <MenuItem disabled={searchSources.length === 0} onClick={handleOpenCustom}>
-                    {t("songInfo.customSearch")}
-                  </MenuItem>
-                </MenuContent>
-              </Menu>
-            </div>
+            <LyricsSearchButton
+              disabled={searchSources.length === 0}
+              geniusDisabled={geniusDisabled}
+              useGenius={useGenius}
+              useLrclib={useLrclib}
+              useYtmusic={useYtmusic}
+              defaultTitle={defaultTitle}
+              defaultArtist={track.artist}
+              onSearch={handleOpenSearch}
+              onUseGeniusChange={handleUseGeniusChange}
+              onUseLrclibChange={handleUseLrclibChange}
+              onUseYtmusicChange={handleUseYtmusicChange}
+            />
             <Button onClick={handleSave} disabled={saving} className="text-sm">
               {t("songInfo.save")}
             </Button>
@@ -362,47 +295,6 @@ export function SongInfoView({ track, onSaved, onLyricsChange, currentTrack, isP
         onApply={handleApplyResult}
       />
 
-      {/* カスタム検索ワード入力ダイアログ */}
-      <Dialog open={customOpen} onOpenChange={setCustomOpen}>
-        <DialogContent className="min-w-lg sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t("songInfo.customSearch")}</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-muted-foreground">{t("songInfo.searchArtist")}</label>
-              <Input
-                className="!text-sm rounded-xs"
-                value={customArtist}
-                onChange={(e) => setCustomArtist(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCustomSubmit();
-                }}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-muted-foreground">{t("songInfo.searchTitle")}</label>
-              <Input
-                className="!text-sm rounded-xs"
-                value={customTitle}
-                onChange={(e) => setCustomTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCustomSubmit();
-                }}
-                autoFocus
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button className="text-sm" variant="outline" onClick={() => setCustomOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button className="text-sm" onClick={handleCustomSubmit} disabled={!customTitle.trim() && !customArtist.trim()}>
-              {t("common.search")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
