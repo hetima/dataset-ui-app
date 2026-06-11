@@ -65,6 +65,7 @@ pub async fn search_lyrics(
         let result = match source.as_str() {
             "genius" => send_genius(&channel, &client, &genius_api_key, title, artist, &cancelled).await,
             "lrclib" => send_lrclib(&channel, &client, title, artist).await,
+            "ytmusic" => send_ytmusic(&channel, &client, title, artist, &cancelled).await,
             _ => Ok(()),
         };
         if let Err(message) = result {
@@ -156,6 +157,170 @@ async fn send_lrclib(
     }
 
     Ok(())
+}
+
+/// YouTube Music の非公式 InnerTube API。公開された WEB_REMIX クライアント用の API キー。
+const YTMUSIC_API_KEY: &str = "AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30";
+/// search を曲（songs）に絞り込むための params 値
+const YTMUSIC_SONGS_PARAMS: &str = "EgWKAQIIAWoMEA4QChADEAQQCRAF";
+
+/// InnerTube API の共通 context（client 情報）を組み立てる。
+/// clientVersion は "1.YYYYMMDD.01.00" 形式。日付は厳密でなくても動作するため固定値を使う。
+fn ytmusic_context() -> serde_json::Value {
+    serde_json::json!({
+        "client": {
+            "clientName": "WEB_REMIX",
+            "clientVersion": "1.20240101.01.00",
+            "hl": "en",
+        },
+        "user": {},
+    })
+}
+
+/// InnerTube の指定エンドポイントへ POST し、JSON レスポンスを返す
+async fn ytmusic_post(
+    client: &reqwest::Client,
+    endpoint: &str,
+    mut body: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    body["context"] = ytmusic_context();
+    let url = format!("https://music.youtube.com/youtubei/v1/{}?alt=json", endpoint);
+    client
+        .post(&url)
+        .query(&[("key", YTMUSIC_API_KEY)])
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0",
+        )
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .error_for_status()
+        .map_err(|e| e.to_string())?
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// YouTube Music で曲を検索し、歌詞があれば取得して channel へ送る。
+/// search → next（歌詞タブの browseId 取得）→ browse（歌詞本文）の 3 段階。
+/// 同期歌詞には対応せず、プレーンテキストのみ取得する。
+async fn send_ytmusic(
+    channel: &Channel<SearchEvent>,
+    client: &reqwest::Client,
+    title: &str,
+    artist: &str,
+    cancelled: &impl Fn() -> bool,
+) -> Result<(), String> {
+    let query = if artist.trim().is_empty() {
+        title.to_string()
+    } else {
+        format!("{} {}", title, artist)
+    };
+
+    // ① 曲を検索して先頭の videoId を取得
+    let search = ytmusic_post(
+        client,
+        "search",
+        serde_json::json!({ "query": query, "params": YTMUSIC_SONGS_PARAMS }),
+    )
+    .await?;
+    let Some((song_title, video_id)) = ytmusic_first_song(&search) else {
+        return Ok(());
+    };
+    if cancelled() {
+        return Ok(());
+    }
+
+    // ② next で歌詞タブの browseId を取得
+    let next = ytmusic_post(
+        client,
+        "next",
+        serde_json::json!({ "videoId": video_id, "isAudioOnly": true }),
+    )
+    .await?;
+    let Some(browse_id) = ytmusic_lyrics_browse_id(&next) else {
+        // 歌詞タブが無い曲は歌詞なしとして扱う
+        return Ok(());
+    };
+    if cancelled() {
+        return Ok(());
+    }
+
+    // ③ browse で歌詞本文を取得
+    let browse = ytmusic_post(client, "browse", serde_json::json!({ "browseId": browse_id })).await?;
+    if let Some(lyrics) = ytmusic_lyrics_text(&browse) {
+        let _ = channel.send(SearchEvent::Result(LyricsResult {
+            title: format!("[YTMusic] {}", song_title),
+            lyrics,
+            synced_lyrics: None,
+        }));
+    }
+
+    Ok(())
+}
+
+/// search レスポンスから先頭の曲の (曲名, videoId) を取り出す
+fn ytmusic_first_song(search: &serde_json::Value) -> Option<(String, String)> {
+    // tabs[0] 配下の musicShelfRenderer から最初の musicResponsiveListItemRenderer を探す
+    let tabs = search
+        .pointer("/contents/tabbedSearchResultsRenderer/tabs")?
+        .as_array()?;
+    let sections = tabs
+        .first()?
+        .pointer("/tabRenderer/content/sectionListRenderer/contents")?
+        .as_array()?;
+    for section in sections {
+        let Some(items) = section.pointer("/musicShelfRenderer/contents").and_then(|v| v.as_array()) else {
+            continue;
+        };
+        for item in items {
+            let renderer = item.pointer("/musicResponsiveListItemRenderer")?;
+            let video_id = renderer
+                .pointer("/overlay/musicItemThumbnailOverlayRenderer/content/musicPlayButtonRenderer/playNavigationEndpoint/watchEndpoint/videoId")
+                .and_then(|v| v.as_str());
+            let Some(video_id) = video_id else { continue };
+            // 曲名は最初の flexColumn のテキスト
+            let title = renderer
+                .pointer("/flexColumns/0/musicResponsiveListItemFlexColumnRenderer/text/runs/0/text")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            return Some((title, video_id.to_string()));
+        }
+    }
+    None
+}
+
+/// next レスポンスのタブ一覧から歌詞タブ（browseId が MPLYt で始まる）を探す
+fn ytmusic_lyrics_browse_id(next: &serde_json::Value) -> Option<String> {
+    let tabs = next
+        .pointer("/contents/singleColumnMusicWatchNextResultsRenderer/tabbedRenderer/watchNextTabbedResultsRenderer/tabs")?
+        .as_array()?;
+    for tab in tabs {
+        let browse_id = tab
+            .pointer("/tabRenderer/endpoint/browseEndpoint/browseId")
+            .and_then(|v| v.as_str());
+        if let Some(id) = browse_id {
+            if id.starts_with("MPLYt") {
+                return Some(id.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// browse レスポンスから歌詞テキストを抽出する
+fn ytmusic_lyrics_text(browse: &serde_json::Value) -> Option<String> {
+    let text = browse
+        .pointer("/contents/sectionListRenderer/contents/0/musicDescriptionShelfRenderer/description/runs/0/text")
+        .and_then(|v| v.as_str())?;
+    if text.trim().is_empty() {
+        return None;
+    }
+    Some(text.to_string())
 }
 
 /// Genius Search API を叩いて (曲名, 歌詞ページURL) のリストを返す

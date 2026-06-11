@@ -14,7 +14,7 @@ export type SearchEvent =
   | { event: "done" };
 
 /** 歌詞検索のソース種別 */
-export type LyricsSource = "genius" | "lrclib";
+export type LyricsSource = "genius" | "lrclib" | "ytmusic";
 
 /**
  * 歌詞検索を実行する。見つかった結果は onEvent で逐次通知される。

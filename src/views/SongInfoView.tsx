@@ -63,6 +63,7 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
   const [geniusApiKey, setGeniusApiKey] = useState("");
   const [useGenius, setUseGenius] = useState(false);
   const [useLrclib, setUseLrclib] = useState(true);
+  const [useYtmusic, setUseYtmusic] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   // 実際に検索に使う曲名 / アーティスト（通常はトラック値、カスタム検索時はダイアログ入力値）
   const [searchTitle, setSearchTitle] = useState("");
@@ -87,6 +88,7 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
       setGeniusApiKey(await settings.getGeniusApiKey());
       setUseGenius(await settings.getLyricsUseGenius());
       setUseLrclib(await settings.getLyricsUseLrclib());
+      setUseYtmusic(await settings.getLyricsUseYtmusic());
     })();
   }, []);
 
@@ -111,6 +113,12 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
     setUseLrclib(v);
     const settings = await AppSettings.load();
     await settings.setLyricsUseLrclib(v);
+  };
+
+  const handleUseYtmusicChange = async (v: boolean) => {
+    setUseYtmusic(v);
+    const settings = await AppSettings.load();
+    await settings.setLyricsUseYtmusic(v);
   };
 
   if (!track) {
@@ -140,6 +148,7 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
   const searchSources: LyricsSource[] = [
     ...(useGenius && !geniusDisabled ? (["genius"] as const) : []),
     ...(useLrclib ? (["lrclib"] as const) : []),
+    ...(useYtmusic ? (["ytmusic"] as const) : []),
   ];
 
   // トラックから導出する既定の曲名（title 空ならファイル名・拡張子抜き）
@@ -245,6 +254,13 @@ export function SongInfoView({ track, onSaved, currentTrack, isPlaying, onToggle
                   }
                 />
                 <MenuContent align="end" className="min-w-44">
+                  <MenuItem
+                    closeOnClick={false}
+                    onClick={() => handleUseYtmusicChange(!useYtmusic)}
+                  >
+                    <Checkbox checked={useYtmusic} />
+                    <span className="flex-1">YTMusic</span>
+                  </MenuItem>
                   <MenuItem
                     closeOnClick={false}
                     disabled={geniusDisabled}

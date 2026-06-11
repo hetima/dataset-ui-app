@@ -14,6 +14,7 @@ const APP_KEYS = {
   geniusApiKey: "app.lyrics.geniusApiKey",
   lyricsUseGenius: "app.lyrics.useGenius",
   lyricsUseLrclib: "app.lyrics.useLrclib",
+  lyricsUseYtmusic: "app.lyrics.useYtmusic",
 } as const;
 
 const PLAYER_VIEW_KEYS = {
@@ -56,6 +57,7 @@ export class AppSettings {
         [APP_KEYS.geniusApiKey]: "",
         [APP_KEYS.lyricsUseGenius]: false,
         [APP_KEYS.lyricsUseLrclib]: true,
+        [APP_KEYS.lyricsUseYtmusic]: false,
       },
       autoSave: false,
     });
@@ -133,6 +135,15 @@ export class AppSettings {
 
   async setLyricsUseLrclib(v: boolean): Promise<void> {
     await this.store.set(APP_KEYS.lyricsUseLrclib, v);
+    await this.store.save();
+  }
+
+  async getLyricsUseYtmusic(): Promise<boolean> {
+    return (await this.store.get<boolean>(APP_KEYS.lyricsUseYtmusic)) ?? false;
+  }
+
+  async setLyricsUseYtmusic(v: boolean): Promise<void> {
+    await this.store.set(APP_KEYS.lyricsUseYtmusic, v);
     await this.store.save();
   }
 }
