@@ -228,7 +228,7 @@ async fn fetch_lyrics(client: &reqwest::Client, url: &str) -> Result<String, Str
 /// HTML から歌詞コンテナを抽出してプレーンテキスト化する
 fn extract_lyrics(html: &str) -> Result<String, String> {
     let document = Html::parse_document(html);
-    // Genius の歌詞コンテナは data-lyrics-container="true" 属性を持つ div
+    // Genius の歌詞コンテナから、ヘッダーなどの選択除外要素を避けて本文を抽出する
     let selector = Selector::parse(r#"div[data-lyrics-container="true"]"#)
         .map_err(|e| e.to_string())?;
 
@@ -261,6 +261,9 @@ fn collect_node(node: scraper::ElementRef, lines: &mut Vec<String>) {
             }
             Node::Element(_) => {
                 if let Some(el_ref) = scraper::ElementRef::wrap(child) {
+                    if el_ref.value().attr("data-exclude-from-selection").is_some() {
+                        continue;
+                    }
                     collect_node(el_ref, lines);
                 }
             }
