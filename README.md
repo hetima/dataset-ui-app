@@ -43,11 +43,16 @@ Ctrl+Sを押したときやフォルダを閉じるときに、フラグの状�
 
 音声入力に対応したLLMサーバでtransctiptの書き起こしを行えます。Gemma 4が一応動きますが、[dataset-ui](https://github.com/hetima/dataset-ui)に搭載された`cli/lfm_server.py`を使えばASR専用モデルLFM2.5-Audio-1.5B-JPを利用できるのでお勧めです。
 
+## 歌詞をネット検索
+
+歌詞を YouTube Music, Genius, LRCLIB で検索しで取得できます。YouTube がいちばんつよいと思います。LRCLIB では時間情報が付いた同期歌詞も取得できます。m4a のみダグに保存できます。m4a 含めそれ以外は `mtdt.json` に保存されます。
+
 
 ![Screenshot](https://raw.githubusercontent.com/hetima/dataset-ui-app/main/assets/ss01.jpg)
 
 ![Screenshot](https://raw.githubusercontent.com/hetima/dataset-ui-app/main/assets/ss02.jpg)
 
+![Screenshot](https://raw.githubusercontent.com/hetima/dataset-ui-app/main/assets/ss03.jpg)
 
 ## ライセンス
 MIT
