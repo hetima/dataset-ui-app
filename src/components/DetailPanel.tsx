@@ -126,7 +126,7 @@ export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSo
           spellCheck={false}
         />
       </div>
-      {(track.lyrics || track.syncedLyrics || track.ttml) && (
+      {(track.lyrics || track.title) && (
         <div className="min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1 min-w-0">
             <p className="text-xs text-muted-foreground shrink-0">{t("details.lyrics")}</p>
@@ -167,8 +167,6 @@ export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSo
             className="block w-full min-w-0 resize-none rounded-xs border bg-transparent p-2 text-sm font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             spellCheck={false}
           />
-          {track.syncedLyrics && <p className="w-full max-w-full whitespace-pre-wrap break-all">{track.syncedLyrics}</p>}
-          {track.ttml && <p className="w-full max-w-full whitespace-pre-wrap break-all">{track.ttml}</p>}
         </div>
       )}
     </div>

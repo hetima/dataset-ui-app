@@ -28,7 +28,7 @@ const resources = {
       },
       songInfo: {
         noTrack: "曲が選択されていません",
-        hint: "プレイヤーの情報パネルの編集ボタン、または単体ファイルのドロップで開けます",
+        hint: "プレイヤーで曲を選択してください。ここへフォルダをドロップするとプレイヤーで開きます",
         filePath: "ファイルパス",
         lyrics: "歌詞",
         save: "保存",
@@ -191,7 +191,7 @@ const resources = {
       },
       songInfo: {
         noTrack: "No track selected",
-        hint: "Open via the edit button in the player detail panel, or drop a single file",
+        hint: "Select a song in the player. Dropping a folder here will open it in the player.",
         filePath: "File path",
         lyrics: "Lyrics",
         save: "Save",

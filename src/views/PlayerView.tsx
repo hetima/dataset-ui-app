@@ -676,6 +676,7 @@ export function PlayerView() {
         dispatch({ type: "SET_TRACKS", tracks: allTracks });
         dispatch({ type: "SET_SONG_INFO_TRACK", track: null });
       }
+      setActiveContentTab("player");
     });
     return () => { promise.then((fn) => fn()); };
   }, [handleAddToLibrary, t]);

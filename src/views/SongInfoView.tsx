@@ -221,8 +221,7 @@ export function SongInfoView({ track, onSaved, onLyricsChange, currentTrack, isP
       <div className="shrink-0 border-b px-4 py-2 space-y-1">
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-xs text-muted-foreground break-all">{t("songInfo.filePath")}</p>
-            <p className="text-sm break-all">{track.path}</p>
+            <p className="text-sm break-all">{track.name}</p>
             {metaLine && <p className="text-sm text-muted-foreground break-all">{metaLine}</p>}
           </div>
           <div className="flex items-center shrink-0">
