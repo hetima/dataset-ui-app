@@ -15,8 +15,7 @@ scoop install hetima/dataset-ui-app
 #launch
 dataset-ui-app
 
-#アップデートチェック
-scoop update
+#アップデート
 scoop update hetima/dataset-ui-app
 ```
 
