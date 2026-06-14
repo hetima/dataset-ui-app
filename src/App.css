@@ -42,7 +42,7 @@
   --chart-3: oklch(0.8816 0.0276 93.1280);
   --chart-4: oklch(0.8822 0.0403 298.1792);
   --chart-5: oklch(0.5608 0.1348 42.0584);
-  --radius: 1rem;
+  --radius: 0.6rem;
   --sidebar: oklch(0.9663 0.0080 98.8792);
   --sidebar-foreground: oklch(0.3590 0.0051 106.6524);
   --sidebar-primary: oklch(0.6171 0.1375 39.0427);
@@ -117,7 +117,7 @@
   --radius-4xl: calc(var(--radius) * 2.6);
   --font-mono: Geist Mono, ui-monospace, monospace;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --radius: 1rem;
+  --radius: 0.6rem;
   --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
   --tracking-tight: calc(var(--tracking-normal) - 0.025em);
   --tracking-wide: calc(var(--tracking-normal) + 0.025em);
@@ -176,7 +176,7 @@
   --sidebar-border: oklch(0.9401 0 0);
   --sidebar-ring: oklch(0.7731 0 0);
   --destructive-foreground: oklch(1.0000 0 0);
-  --radius: 1rem;
+  --radius: 0.6rem;
   --font-sans: Outfit, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: Geist Mono, ui-monospace, monospace;
