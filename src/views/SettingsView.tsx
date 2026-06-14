@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldDescription, FieldGroup, FieldLegend, FieldSet, FieldTitle, FieldSeparator } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet, FieldTitle, FieldSeparator } from "@/components/ui/field";
 import type { AppLanguage } from "@/lib/i18n";
 import type { AppTheme } from "@/lib/theme";
+import { datasetUiPathExists, stripQuotes, type DatasetUiDirConfig } from "@/lib/datasetUiConfig";
 
-type Section = "general" | "player" | "lyrics";
+type Section = "general" | "player" | "lyrics" | "server";
 
 const SHORTCUTS = [
   { key: "settings.shortcutKeys.space", descKey: "settings.shortcutDescriptions.space" },
@@ -48,17 +51,48 @@ type Props = {
   onLyricsUseGeniusChange: (v: boolean) => void;
   onLyricsUseLrclibChange: (v: boolean) => void;
   onLyricsUseYtmusicChange: (v: boolean) => void;
+  datasetUiPath: string;
+  onDatasetUiPathChange: (path: string) => void;
+  datasetUiDirConfig: DatasetUiDirConfig;
 };
 
-export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, llmBaseUrl, llmModel, llmApiKey, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange, onLlmBaseUrlChange, onLlmModelChange, onLlmApiKeyChange, geniusApiKey, onGeniusApiKeyChange, lyricsUseGenius, lyricsUseLrclib, lyricsUseYtmusic, onLyricsUseGeniusChange, onLyricsUseLrclibChange, onLyricsUseYtmusicChange }: Props) {
+export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, llmBaseUrl, llmModel, llmApiKey, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange, onLlmBaseUrlChange, onLlmModelChange, onLlmApiKeyChange, geniusApiKey, onGeniusApiKeyChange, lyricsUseGenius, lyricsUseLrclib, lyricsUseYtmusic, onLyricsUseGeniusChange, onLyricsUseLrclibChange, onLyricsUseYtmusicChange, datasetUiPath, onDatasetUiPathChange, datasetUiDirConfig }: Props) {
   const { t } = useTranslation();
   const [section, setSection] = useState<Section>("general");
+  const [datasetUiPathError, setDatasetUiPathError] = useState(false);
+
+  // dataset-ui のパスが存在するかバリデーション
+  useEffect(() => {
+    let cancelled = false;
+    if (datasetUiPath === "") {
+      setDatasetUiPathError(false);
+      return;
+    }
+    datasetUiPathExists(datasetUiPath).then((ok) => {
+      if (!cancelled) setDatasetUiPathError(!ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [datasetUiPath]);
+
+  // 値の " を除去して反映する（入力・選択共通）
+  const applyDatasetUiPath = (value: string) => {
+    onDatasetUiPathChange(stripQuotes(value));
+  };
+
+  const handleSelectDatasetUiPath = async () => {
+    const selected = await open({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      applyDatasetUiPath(selected);
+    }
+  };
 
   return (
     <div className="flex flex-1 overflow-hidden h-full">
       {/* セクションリスト（左） */}
       <div className="flex flex-col gap-0.5 p-2 w-28 shrink-0 border-r">
-        {(["general", "player", "lyrics"] as Section[]).map((s) => (
+        {(["general", "player", "lyrics", "server"] as Section[]).map((s) => (
           <Button
             key={s}
             variant={section === s ? "secondary" : "ghost"}
@@ -80,40 +114,40 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
                 <FieldTitle>{t("settings.language")}</FieldTitle>
                 <FieldDescription>{t("settings.languageDescription")}</FieldDescription>
               </div>
-              <div className="flex gap-1">
+              <ButtonGroup>
                 <Button
-                  variant={language === "ja" ? "secondary" : "ghost"}
+                  variant={language === "ja" ? "secondary" : "outline"}
                   size="sm"
                   onClick={() => onLanguageChange("ja")}
                 >
                   {t("settings.japanese")}
                 </Button>
                 <Button
-                  variant={language === "en" ? "secondary" : "ghost"}
+                  variant={language === "en" ? "secondary" : "outline"}
                   size="sm"
                   onClick={() => onLanguageChange("en")}
                 >
                   {t("settings.english")}
                 </Button>
-              </div>
+              </ButtonGroup>
             </Field>
             <Field orientation="horizontal">
               <div className="flex-1">
                 <FieldTitle>{t("settings.theme")}</FieldTitle>
                 <FieldDescription>{t("settings.themeDescription")}</FieldDescription>
               </div>
-              <div className="flex gap-1">
+              <ButtonGroup>
                 {(["light", "dark", "system"] as AppTheme[]).map((value) => (
                   <Button
                     key={value}
-                    variant={theme === value ? "secondary" : "ghost"}
+                    variant={theme === value ? "secondary" : "outline"}
                     size="sm"
                     onClick={() => onThemeChange(value)}
                   >
                     {t(`settings.${value}`)}
                   </Button>
                 ))}
-              </div>
+              </ButtonGroup>
             </Field>
             <FieldSeparator></FieldSeparator>
             <FieldSet>
@@ -221,6 +255,38 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
                 <Field key={key} orientation="horizontal">
                   <FieldTitle className="w-48 shrink-0 font-mono">{key.includes(".") ? t(key) : key}</FieldTitle>
                   <FieldDescription className="whitespace-pre-line">{t(descKey)}</FieldDescription>
+                </Field>
+              ))}
+            </FieldSet>
+          </FieldGroup>
+        )}
+        {section === "server" && (
+          <FieldGroup>
+            <Field data-invalid={datasetUiPathError ? true : undefined}>
+              <FieldLegend variant="label">{t("settings.datasetUiPath")}</FieldLegend>
+              <FieldDescription>{t("settings.datasetUiPathDescription")}</FieldDescription>
+              <div className="flex gap-1">
+                <Input
+                  id="dataset-ui-path"
+                  className="h-7 text-xs"
+                  value={datasetUiPath}
+                  onChange={(e) => applyDatasetUiPath(e.target.value)}
+                />
+                <Button variant="outline" size="sm" onClick={handleSelectDatasetUiPath}>
+                  {t("settings.select")}
+                </Button>
+              </div>
+              {datasetUiPathError && (
+                <FieldError>{t("settings.datasetUiPathNotFound")}</FieldError>
+              )}
+            </Field>
+            <FieldSet>
+              <FieldLegend variant="label">{t("settings.datasetUiConfig")}</FieldLegend>
+              <FieldDescription>{t("settings.datasetUiConfigDescription")}</FieldDescription>
+              {(["models_dir", "outputs_dir", "train_dir"] as const).map((key) => (
+                <Field key={key} orientation="horizontal">
+                  <FieldTitle className="w-24 shrink-0 font-mono">{key}</FieldTitle>
+                  <FieldDescription className="break-all">{datasetUiDirConfig[key] ?? "—"}</FieldDescription>
                 </Field>
               ))}
             </FieldSet>

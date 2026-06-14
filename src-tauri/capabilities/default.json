@@ -19,6 +19,7 @@
       "allow": [{ "path": "**" }]
     },
     "store:default",
+    "dialog:allow-open",
     "core:window:allow-destroy"
   ]
 }

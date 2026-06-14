@@ -15,6 +15,7 @@ const APP_KEYS = {
   lyricsUseGenius: "app.lyrics.useGenius",
   lyricsUseLrclib: "app.lyrics.useLrclib",
   lyricsUseYtmusic: "app.lyrics.useYtmusic",
+  datasetUiPath: "app.server.datasetUiPath",
 } as const;
 
 const PLAYER_VIEW_KEYS = {
@@ -60,6 +61,7 @@ export class AppSettings {
         [APP_KEYS.lyricsUseGenius]: false,
         [APP_KEYS.lyricsUseLrclib]: false,
         [APP_KEYS.lyricsUseYtmusic]: true,
+        [APP_KEYS.datasetUiPath]: "",
       },
       autoSave: false,
     });
@@ -146,6 +148,15 @@ export class AppSettings {
 
   async setLyricsUseYtmusic(v: boolean): Promise<void> {
     await this.store.set(APP_KEYS.lyricsUseYtmusic, v);
+    await this.store.save();
+  }
+
+  async getDatasetUiPath(): Promise<string> {
+    return (await this.store.get<string>(APP_KEYS.datasetUiPath)) ?? "";
+  }
+
+  async setDatasetUiPath(path: string): Promise<void> {
+    await this.store.set(APP_KEYS.datasetUiPath, path);
     await this.store.save();
   }
 }

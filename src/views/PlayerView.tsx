@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { toast } from "sonner";
 import { AppSettings } from "../lib/settings";
+import { loadDatasetUiDirConfig, type DatasetUiDirConfig } from "../lib/datasetUiConfig";
 import type { AppLanguage } from "../lib/i18n";
 import type { AppTheme } from "../lib/theme";
 import { reducer, initialState } from "../reducer";
@@ -79,6 +80,8 @@ export function PlayerView() {
   const [lyricsUseGenius, setLyricsUseGenius] = useState(false);
   const [lyricsUseLrclib, setLyricsUseLrclib] = useState(false);
   const [lyricsUseYtmusic, setLyricsUseYtmusic] = useState(true);
+  const [datasetUiPath, setDatasetUiPath] = useState("");
+  const [datasetUiDirConfig, setDatasetUiDirConfig] = useState<DatasetUiDirConfig>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [isGeneratingTranscript, setIsGeneratingTranscript] = useState(false);
@@ -193,6 +196,9 @@ export function PlayerView() {
       setLyricsUseGenius(await settings.getLyricsUseGenius());
       setLyricsUseLrclib(await settings.getLyricsUseLrclib());
       setLyricsUseYtmusic(await settings.getLyricsUseYtmusic());
+      const loadedDatasetUiPath = await settings.getDatasetUiPath();
+      setDatasetUiPath(loadedDatasetUiPath);
+      setDatasetUiDirConfig(await loadDatasetUiDirConfig(loadedDatasetUiPath));
       setAutoPlay(await playerView.getAutoPlay());
       setSyncToggle(await playerView.getSyncToggle());
       const savedSidebarWidth = await playerView.getSidebarWidth();
@@ -394,6 +400,13 @@ export function PlayerView() {
     setLyricsUseYtmusic(v);
     const settings = await AppSettings.load();
     await settings.setLyricsUseYtmusic(v);
+  }, []);
+
+  const handleDatasetUiPathChange = useCallback(async (path: string) => {
+    setDatasetUiPath(path);
+    const settings = await AppSettings.load();
+    await settings.setDatasetUiPath(path);
+    setDatasetUiDirConfig(await loadDatasetUiDirConfig(path));
   }, []);
 
   const handleOpenDetailLyricsSearch = useCallback((title: string, artist: string) => {
@@ -1044,6 +1057,9 @@ export function PlayerView() {
             onLyricsUseGeniusChange={handleLyricsUseGeniusChange}
             onLyricsUseLrclibChange={handleLyricsUseLrclibChange}
             onLyricsUseYtmusicChange={handleLyricsUseYtmusicChange}
+            datasetUiPath={datasetUiPath}
+            onDatasetUiPathChange={handleDatasetUiPathChange}
+            datasetUiDirConfig={datasetUiDirConfig}
           />
         </TabsContent>
       </Tabs>
