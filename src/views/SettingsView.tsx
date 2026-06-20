@@ -6,7 +6,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet, FieldTitle, FieldSeparator } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLegend, FieldSet, FieldTitle, FieldSeparator } from "@/components/ui/field";
 import type { AppLanguage } from "@/lib/i18n";
 import type { AppTheme } from "@/lib/theme";
 import { datasetUiPathExists, stripQuotes, type DatasetUiDirConfig } from "@/lib/datasetUiConfig";
@@ -116,14 +116,14 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
               </div>
               <ButtonGroup>
                 <Button
-                  variant={language === "ja" ? "secondary" : "outline"}
+                  variant={language === "ja" ? "default" : "outline"}
                   size="sm"
                   onClick={() => onLanguageChange("ja")}
                 >
                   {t("settings.japanese")}
                 </Button>
                 <Button
-                  variant={language === "en" ? "secondary" : "outline"}
+                  variant={language === "en" ? "default" : "outline"}
                   size="sm"
                   onClick={() => onLanguageChange("en")}
                 >
@@ -140,7 +140,7 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
                 {(["light", "dark", "system"] as AppTheme[]).map((value) => (
                   <Button
                     key={value}
-                    variant={theme === value ? "secondary" : "outline"}
+                    variant={theme === value ? "default" : "outline"}
                     size="sm"
                     onClick={() => onThemeChange(value)}
                   >

@@ -31,6 +31,11 @@ symphonia = { version = "0.6", default-features = false, features = ["mp3", "iso
 base64 = "0.22"
 scraper = "0.22"
 
+[profile.dev]
+debug = 1               # シンボルを「行番号情報」のみに制限
+[profile.dev.package."*"]
+debug = 0               # 依存ライブラリのデバッグ情報を削除
+
 [profile.release]
 opt-level = "z"       # 速度優先(3)ではなく、サイズ優先(z)で最適化
 lto = true            # リンク時最適化(Link-Time Optimization)を有効化
