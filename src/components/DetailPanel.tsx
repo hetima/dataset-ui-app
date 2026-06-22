@@ -122,7 +122,7 @@ export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSo
             setTranscript(e.target.value);
             if (currentIndex !== null) onTranscriptChange(currentIndex, e.target.value);
           }}
-          className="block w-full min-w-0 resize-none rounded-xs border bg-transparent p-2 text-sm font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="block w-full min-w-0 resize-none rounded-xs border bg-transparent p-2 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           spellCheck={false}
         />
       </div>
@@ -164,7 +164,7 @@ export function DetailPanel({ track, currentIndex, onSetGood, onSetBad, onEditSo
               setLyrics(e.target.value);
               if (currentIndex !== null) onLyricsChange(currentIndex, e.target.value);
             }}
-            className="block w-full min-w-0 resize-none rounded-xs border bg-transparent p-2 text-sm font-mono leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="block w-full min-w-0 resize-none rounded-xs border bg-transparent p-2 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             spellCheck={false}
           />
         </div>
