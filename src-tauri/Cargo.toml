@@ -1,6 +1,6 @@
 [package]
 name = "dataset-ui-app"
-version = "0.2.0"
+version = "0.2.1"
 description = "Audio Player"
 authors = []
 edition = "2021"

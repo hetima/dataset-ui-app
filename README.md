@@ -38,9 +38,10 @@ Ctrl+Sを押したときやフォルダを閉じるときに、フラグの状�
 `ファイル名.txt` や `mtdt.json` のtranscriptを読み込んで表示します。
 
 
-## OpenAI互換APIサーバで書き起こし
+## ASRサーバで書き起こし
 
-音声入力に対応したLLMサーバでtransctiptの書き起こしを行えます。Gemma 4が一応動きますが、[dataset-ui](https://github.com/hetima/dataset-ui)に搭載された`cli/lfm_server.py`を使えばASR専用モデルLFM2.5-Audio-1.5B-JPを利用できるのでお勧めです。
+音声入力に対応したLLMサーバでtransctiptの書き起こしを行えます。[dataset-ui](https://github.com/hetima/dataset-ui) でLFM2.5-Audio-1.5B-JPを使用し書き起こします。
+
 
 ## 歌詞をネット検索
 

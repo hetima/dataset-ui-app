@@ -671,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "dataset-ui-app"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "mp4ameta",
  "reqwest 0.12.28",
