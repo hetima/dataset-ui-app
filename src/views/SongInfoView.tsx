@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Track } from "@/types";
@@ -275,11 +275,13 @@ export function SongInfoView({ track, onSaved, onLyricsChange, currentTrack, isP
             label={t(`songInfo.paneLabel.${TAB_PANES[tab].leftLabel}`)}
             value={lyricsValues[TAB_PANES[tab].left]}
             onChange={(value) => updateLyricsField(TAB_PANES[tab].left, value)}
+            synced={TAB_PANES[tab].left === "syncedLyrics" || TAB_PANES[tab].left === "draftSyncedLyrics"}
           />
           <LyricsPane
             label={t(`songInfo.paneLabel.${TAB_PANES[tab].rightLabel}`)}
             value={lyricsValues[TAB_PANES[tab].right]}
             onChange={(value) => updateLyricsField(TAB_PANES[tab].right, value)}
+            synced={TAB_PANES[tab].right === "syncedLyrics" || TAB_PANES[tab].right === "draftSyncedLyrics"}
           />
         </div>
       </div>
@@ -334,25 +336,179 @@ function TabGroup({
   );
 }
 
-/** Actual / Draft それぞれの歌詞編集ペイン（ラベル + textarea） */
+// セクションタグの候補リスト
+const SECTION_CANDIDATES = [
+  "[Intro]", "[Verse]", "[Chorus]", "[Pre-Chorus]", "[Bridge]", "[Outro]",
+  "[Hook]", "[End]", "[Interlude]", "[Transition]", "[Modulation]", "[Drop]",
+  "[Build-up]", "[Solo]", "[Guitar Solo]", "[Piano Solo]", "[Instrumental]",
+  "[Break]", "[Fade Out]", "[Refrain]", "[Male Voice]", "[Female Voice]", "[Rap]",
+];
+
+/** Actual / Draft それぞれの歌詞編集ペイン（ラベル + textarea）。
+ * synced=true の場合はセクションタグ補完を無効化する。 */
 function LyricsPane({
   label,
   value,
   onChange,
+  synced = false,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  synced?: boolean;
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mirrorRef = useRef<HTMLDivElement>(null);
+  // [ のあとに入力した文字列（null = 補完非アクティブ）
+  const [query, setQuery] = useState<string | null>(null);
+  // カーソル直前の [ の位置
+  const bracketPosRef = useRef<number>(-1);
+  const [activeIdx, setActiveIdx] = useState(0);
+  // ポップアップ表示座標（textarea 左上基準）
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null);
+
+  const candidates = query === null
+    ? []
+    : SECTION_CANDIDATES.filter((c) => c.toLowerCase().includes(query.toLowerCase()));
+
+  // 候補リストが変わったら選択を先頭に戻す
+  useEffect(() => { setActiveIdx(0); }, [candidates.length]);
+
+  // ミラー要素でカーソルの座標を計算する
+  const calcPopupPos = useCallback((ta: HTMLTextAreaElement, cursorPos: number) => {
+    const mirror = mirrorRef.current;
+    if (!mirror) return;
+
+    // ミラーに textarea のスタイルをコピー
+    const style = window.getComputedStyle(ta);
+    mirror.style.width = ta.offsetWidth + "px";
+    mirror.style.font = style.font;
+    mirror.style.lineHeight = style.lineHeight;
+    mirror.style.padding = style.padding;
+    mirror.style.border = style.border;
+    mirror.style.whiteSpace = "pre-wrap";
+    mirror.style.wordBreak = "break-word";
+    mirror.style.overflowWrap = "break-word";
+    mirror.style.boxSizing = "border-box";
+
+    // カーソル位置までのテキストを入れてスパンでマーク
+    const before = ta.value.slice(0, cursorPos);
+    mirror.innerHTML = "";
+    const textNode = document.createTextNode(before);
+    const span = document.createElement("span");
+    span.textContent = "​"; // zero-width space でスパン高さを確保
+    mirror.appendChild(textNode);
+    mirror.appendChild(span);
+
+    // スクロール量を合わせる
+    mirror.scrollTop = ta.scrollTop;
+
+    const taRect = ta.getBoundingClientRect();
+    const spanRect = span.getBoundingClientRect();
+    setPopupPos({
+      top: spanRect.bottom - taRect.top,
+      left: spanRect.left - taRect.left,
+    });
+  }, []);
+
+  // 候補を選択して textarea に流し込む
+  const applyCandidate = useCallback((candidate: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const pos = bracketPosRef.current;
+    const before = value.slice(0, pos);
+    const after = value.slice(ta.selectionEnd);
+    const next = before + candidate + after;
+    onChange(next);
+    setQuery(null);
+    setPopupPos(null);
+    // カーソルを候補末尾に移動（次の render 後）
+    const newPos = pos + candidate.length;
+    requestAnimationFrame(() => {
+      ta.setSelectionRange(newPos, newPos);
+      ta.focus();
+    });
+  }, [value, onChange]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (query === null) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.min(i + 1, candidates.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      if (candidates.length > 0) {
+        e.preventDefault();
+        applyCandidate(candidates[activeIdx]);
+      }
+    } else if (e.key === "Escape") {
+      setQuery(null);
+      setPopupPos(null);
+    }
+  }, [query, candidates, activeIdx, applyCandidate]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!synced) {
+      const ta = e.target;
+      const cursor = ta.selectionStart;
+      const textBefore = ta.value.slice(0, cursor);
+      // カーソル直前の [ を探す（改行や ] をまたがない）
+      const bracketMatch = textBefore.match(/\[([^\]\n]*)$/);
+      if (bracketMatch) {
+        bracketPosRef.current = cursor - bracketMatch[0].length;
+        setQuery(bracketMatch[1]);
+        calcPopupPos(ta, cursor);
+      } else {
+        setQuery(null);
+        setPopupPos(null);
+      }
+    }
+    onChange(e.target.value);
+  }, [synced, onChange, calcPopupPos]);
+
+  const showPopup = !synced && query !== null && candidates.length > 0 && popupPos !== null;
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden gap-1.5">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 resize-none rounded-xs border bg-transparent p-2 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        spellCheck={false}
-      />
+      <div className="relative flex flex-col flex-1 overflow-hidden">
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          className="flex-1 resize-none rounded-xs border bg-transparent p-2 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          spellCheck={false}
+        />
+        {/* ミラー要素: カーソル座標計算用、非表示 */}
+        <div
+          ref={mirrorRef}
+          aria-hidden
+          className="absolute top-0 left-0 invisible pointer-events-none text-sm leading-relaxed overflow-hidden"
+        />
+        {showPopup && (
+          <ul
+            className="absolute z-50 max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md text-sm"
+            style={{ top: popupPos!.top, left: popupPos!.left }}
+          >
+            {candidates.map((c, i) => (
+              <li
+                key={c}
+                className={cn(
+                  "px-3 py-1 cursor-pointer whitespace-nowrap",
+                  i === activeIdx ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+                )}
+                onMouseDown={(e) => { e.preventDefault(); applyCandidate(c); }}
+                onMouseEnter={() => setActiveIdx(i)}
+              >
+                {c}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
