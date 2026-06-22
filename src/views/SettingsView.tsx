@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLegend, FieldSet, FieldTitle, FieldSeparator } from "@/components/ui/field";
 import type { AppLanguage } from "@/lib/i18n";
 import type { AppTheme } from "@/lib/theme";
-import { datasetUiPathExists, stripQuotes, type DatasetUiDirConfig } from "@/lib/datasetUiConfig";
+import { datasetUiPathExists, findDatasetUiVenvPath, stripQuotes, type DatasetUiDirConfig } from "@/lib/datasetUiConfig";
 
 type Section = "general" | "player" | "lyrics" | "server";
 
@@ -32,17 +32,11 @@ type Props = {
   syncToggle: boolean;
   language: AppLanguage;
   theme: AppTheme;
-  llmBaseUrl: string;
-  llmModel: string;
-  llmApiKey: string;
   onGoodFolderNameChange: (name: string) => void;
   onBadFolderNameChange: (name: string) => void;
   onSyncToggleChange: (v: boolean) => void;
   onLanguageChange: (language: AppLanguage) => void;
   onThemeChange: (theme: AppTheme) => void;
-  onLlmBaseUrlChange: (baseUrl: string) => void;
-  onLlmModelChange: (model: string) => void;
-  onLlmApiKeyChange: (apiKey: string) => void;
   geniusApiKey: string;
   onGeniusApiKeyChange: (apiKey: string) => void;
   lyricsUseGenius: boolean;
@@ -53,13 +47,16 @@ type Props = {
   onLyricsUseYtmusicChange: (v: boolean) => void;
   datasetUiPath: string;
   onDatasetUiPathChange: (path: string) => void;
+  venvPath: string;
+  onVenvPathChange: (path: string) => void;
   datasetUiDirConfig: DatasetUiDirConfig;
 };
 
-export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, llmBaseUrl, llmModel, llmApiKey, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange, onLlmBaseUrlChange, onLlmModelChange, onLlmApiKeyChange, geniusApiKey, onGeniusApiKeyChange, lyricsUseGenius, lyricsUseLrclib, lyricsUseYtmusic, onLyricsUseGeniusChange, onLyricsUseLrclibChange, onLyricsUseYtmusicChange, datasetUiPath, onDatasetUiPathChange, datasetUiDirConfig }: Props) {
+export function SettingsView({ goodFolderName, badFolderName, syncToggle, language, theme, onGoodFolderNameChange, onBadFolderNameChange, onSyncToggleChange, onLanguageChange, onThemeChange, geniusApiKey, onGeniusApiKeyChange, lyricsUseGenius, lyricsUseLrclib, lyricsUseYtmusic, onLyricsUseGeniusChange, onLyricsUseLrclibChange, onLyricsUseYtmusicChange, datasetUiPath, onDatasetUiPathChange, venvPath, onVenvPathChange, datasetUiDirConfig }: Props) {
   const { t } = useTranslation();
   const [section, setSection] = useState<Section>("general");
   const [datasetUiPathError, setDatasetUiPathError] = useState(false);
+  const [venvPathError, setVenvPathError] = useState(false);
 
   // dataset-ui のパスが存在するかバリデーション
   useEffect(() => {
@@ -76,6 +73,32 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
     };
   }, [datasetUiPath]);
 
+  // dataset-ui のパス変更時に既定候補から venv を自動設定
+  useEffect(() => {
+    let cancelled = false;
+    findDatasetUiVenvPath(datasetUiPath).then((foundPath) => {
+      if (!cancelled && foundPath !== null) onVenvPathChange(foundPath);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [datasetUiPath, onVenvPathChange]);
+
+  // venv のパスが存在するかバリデーション
+  useEffect(() => {
+    let cancelled = false;
+    if (venvPath === "") {
+      setVenvPathError(false);
+      return;
+    }
+    datasetUiPathExists(venvPath).then((ok) => {
+      if (!cancelled) setVenvPathError(!ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [venvPath]);
+
   // 値の " を除去して反映する（入力・選択共通）
   const applyDatasetUiPath = (value: string) => {
     onDatasetUiPathChange(stripQuotes(value));
@@ -85,6 +108,26 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
     const selected = await open({ directory: true, multiple: false });
     if (typeof selected === "string") {
       applyDatasetUiPath(selected);
+    }
+  };
+
+  const handleSelectVenvPath = async () => {
+    const selected = await open({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      onVenvPathChange(stripQuotes(selected));
+    }
+  };
+
+  const trimTrailingSeparators = (path: string) => path.replace(/[\\/]+$/, "");
+  const escapePowerShellCommandPath = (path: string) => path.replace(/ /g, "` ");
+  const transcriptionServerCommand =
+    venvPath !== "" && datasetUiPath !== "" && datasetUiDirConfig.models_dir
+      ? `${escapePowerShellCommandPath(`${trimTrailingSeparators(venvPath)}\\Scripts\\python.exe`)} "${trimTrailingSeparators(datasetUiPath)}\\cli\\lfm_server.py" --model "${trimTrailingSeparators(datasetUiDirConfig.models_dir)}\\lfm\\LFM2.5-Audio-1.5B-JP" --host 127.0.0.1 --port 7868`
+      : "";
+
+  const handleCopyTranscriptionServerCommand = async () => {
+    if (transcriptionServerCommand !== "") {
+      await navigator.clipboard.writeText(transcriptionServerCommand);
     }
   };
 
@@ -149,39 +192,6 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
                 ))}
               </ButtonGroup>
             </Field>
-            <FieldSeparator></FieldSeparator>
-            <FieldSet>
-              <FieldLegend variant="label">{t("settings.llm")}</FieldLegend>
-              <FieldDescription>{t("settings.llmDescription")}</FieldDescription>
-              <Field>
-                <FieldTitle>{t("settings.llmBaseUrl")}</FieldTitle>
-                <FieldDescription>{t("settings.llmBaseUrlDescription")}</FieldDescription>
-                <Input
-                  className="h-7 text-xs"
-                  value={llmBaseUrl}
-                  placeholder="http://localhost:8888/v1"
-                  onChange={(e) => onLlmBaseUrlChange(e.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldTitle>{t("settings.llmModel")}</FieldTitle>
-                <FieldDescription>{t("settings.llmModelDescription")}</FieldDescription>
-                <Input
-                  className="h-7 text-xs"
-                  value={llmModel}
-                  onChange={(e) => onLlmModelChange(e.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldTitle>{t("settings.llmApiKey")}</FieldTitle>
-                <Input
-                  className="h-7 text-xs"
-                  value={llmApiKey}
-                  type="password"
-                  onChange={(e) => onLlmApiKeyChange(e.target.value)}
-                />
-              </Field>
-            </FieldSet>
           </FieldGroup>
         )}
         {section === "lyrics" && (
@@ -268,7 +278,7 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
               <div className="flex gap-1">
                 <Input
                   id="dataset-ui-path"
-                  className="h-7 text-xs"
+                  className="h-7 text-sm"
                   value={datasetUiPath}
                   onChange={(e) => applyDatasetUiPath(e.target.value)}
                 />
@@ -280,6 +290,42 @@ export function SettingsView({ goodFolderName, badFolderName, syncToggle, langua
                 <FieldError>{t("settings.datasetUiPathNotFound")}</FieldError>
               )}
             </Field>
+            <Field data-invalid={venvPathError ? true : undefined}>
+              <FieldLegend variant="label">{t("settings.venvPath")}</FieldLegend>
+              <FieldDescription>{t("settings.venvPathDescription")}</FieldDescription>
+              <div className="flex gap-1">
+                <Input
+                  id="venv-path"
+                  className="h-7 text-sm"
+                  value={venvPath}
+                  onChange={(e) => onVenvPathChange(stripQuotes(e.target.value))}
+                />
+                <Button variant="outline" size="sm" onClick={handleSelectVenvPath}>
+                  {t("settings.select")}
+                </Button>
+              </div>
+              {venvPathError && (
+                <FieldError>{t("settings.venvPathNotFound")}</FieldError>
+              )}
+            </Field>
+            <FieldSet>
+              <FieldLegend variant="label">{t("settings.transcriptionServerCommand")}</FieldLegend>
+              <FieldDescription>{t("settings.transcriptionServerCommandDescription")}</FieldDescription>
+              <div className="flex items-start gap-1">
+                <pre className="min-h-7 flex-1 whitespace-pre-wrap break-all rounded-md border bg-muted/50 px-2 py-1.5 text-sm font-mono">
+                  {transcriptionServerCommand || "—"}
+                </pre>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={transcriptionServerCommand === ""}
+                  onClick={handleCopyTranscriptionServerCommand}
+                >
+                  {t("settings.copy")}
+                </Button>
+              </div>
+            </FieldSet>
+            <FieldSeparator></FieldSeparator>
             <FieldSet>
               <FieldLegend variant="label">{t("settings.datasetUiConfig")}</FieldLegend>
               <FieldDescription>{t("settings.datasetUiConfigDescription")}</FieldDescription>

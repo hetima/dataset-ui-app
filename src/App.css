@@ -6,7 +6,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  font-family: 'Segoe UI', system-ui, Inter, Avenir, sans-serif;
+  font-family: 'Segoe UI', 'BIZ UDPGothic', system-ui, Inter, Avenir, sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
@@ -54,7 +54,7 @@
   --destructive-foreground: oklch(1.0000 0 0);
   --font-sans: Outfit, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: Geist Mono, ui-monospace, monospace;
+  --font-mono: HackGen, HackGen35, ui-monospace, monospace;
   --shadow-color: oklch(0 0 0);
   --shadow-opacity: 0.1;
   --shadow-blur: 3px;
@@ -115,7 +115,7 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --font-mono: Geist Mono, ui-monospace, monospace;
+  --font-mono: HackGen, HackGen35, ui-monospace, monospace;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --radius: 0.6rem;
   --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
@@ -179,7 +179,7 @@
   --radius: 0.6rem;
   --font-sans: Outfit, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: Geist Mono, ui-monospace, monospace;
+  --font-mono: HackGen, HackGen35, ui-monospace, monospace;
   --shadow-color: oklch(0 0 0);
   --shadow-opacity: 0.1;
   --shadow-blur: 3px;

@@ -1,5 +1,5 @@
 import { exists, readTextFile } from "@tauri-apps/plugin-fs";
-import { join } from "@tauri-apps/api/path";
+import { dirname, join } from "@tauri-apps/api/path";
 
 /** dataset-ui のルートフォルダにある config.json から読み取る設定 */
 export type DatasetUiDirConfig = {
@@ -25,6 +25,26 @@ export async function datasetUiPathExists(path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** dataset-ui のパスを基準に既定の venv 候補を順番に探す */
+export async function findDatasetUiVenvPath(path: string): Promise<string | null> {
+  if (path === "") return null;
+  try {
+    const parentPath = await dirname(path);
+    const candidates = [
+      await join(path, ".venv"),
+      await join(path, "venv"),
+      await join(parentPath, ".venv"),
+      await join(parentPath, "venv"),
+    ];
+    for (const candidate of candidates) {
+      if (await exists(candidate)) return candidate;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 /**

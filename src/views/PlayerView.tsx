@@ -73,14 +73,12 @@ export function PlayerView() {
   const [activeContentTab, setActiveContentTab] = useState<ContentTab>("player");
   const [language, setLanguage] = useState<AppLanguage>("ja");
   const [theme, setTheme] = useState<AppTheme>("system");
-  const [llmBaseUrl, setLlmBaseUrl] = useState("");
-  const [llmModel, setLlmModel] = useState("");
-  const [llmApiKey, setLlmApiKey] = useState("");
   const [geniusApiKey, setGeniusApiKey] = useState("");
   const [lyricsUseGenius, setLyricsUseGenius] = useState(false);
   const [lyricsUseLrclib, setLyricsUseLrclib] = useState(false);
   const [lyricsUseYtmusic, setLyricsUseYtmusic] = useState(true);
   const [datasetUiPath, setDatasetUiPath] = useState("");
+  const [venvPath, setVenvPath] = useState("");
   const [datasetUiDirConfig, setDatasetUiDirConfig] = useState<DatasetUiDirConfig>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
@@ -189,15 +187,13 @@ export function PlayerView() {
       const loadedTheme = await settings.getTheme();
       setTheme(loadedTheme);
       setAppTheme(loadedTheme);
-      setLlmBaseUrl(await settings.getLlmBaseUrl());
-      setLlmModel(await settings.getLlmModel());
-      setLlmApiKey(await settings.getLlmApiKey());
       setGeniusApiKey(await settings.getGeniusApiKey());
       setLyricsUseGenius(await settings.getLyricsUseGenius());
       setLyricsUseLrclib(await settings.getLyricsUseLrclib());
       setLyricsUseYtmusic(await settings.getLyricsUseYtmusic());
       const loadedDatasetUiPath = await settings.getDatasetUiPath();
       setDatasetUiPath(loadedDatasetUiPath);
+      setVenvPath(await settings.getVenvPath());
       setDatasetUiDirConfig(await loadDatasetUiDirConfig(loadedDatasetUiPath));
       setAutoPlay(await playerView.getAutoPlay());
       setSyncToggle(await playerView.getSyncToggle());
@@ -360,24 +356,6 @@ export function PlayerView() {
     await settings.setTheme(nextTheme);
   }, [setAppTheme]);
 
-  const handleLlmBaseUrlChange = useCallback(async (baseUrl: string) => {
-    setLlmBaseUrl(baseUrl);
-    const settings = await AppSettings.load();
-    await settings.setLlmBaseUrl(baseUrl);
-  }, []);
-
-  const handleLlmModelChange = useCallback(async (model: string) => {
-    setLlmModel(model);
-    const settings = await AppSettings.load();
-    await settings.setLlmModel(model);
-  }, []);
-
-  const handleLlmApiKeyChange = useCallback(async (apiKey: string) => {
-    setLlmApiKey(apiKey);
-    const settings = await AppSettings.load();
-    await settings.setLlmApiKey(apiKey);
-  }, []);
-
   const handleGeniusApiKeyChange = useCallback(async (apiKey: string) => {
     setGeniusApiKey(apiKey);
     const settings = await AppSettings.load();
@@ -409,6 +387,12 @@ export function PlayerView() {
     setDatasetUiDirConfig(await loadDatasetUiDirConfig(path));
   }, []);
 
+  const handleVenvPathChange = useCallback(async (path: string) => {
+    setVenvPath(path);
+    const settings = await AppSettings.load();
+    await settings.setVenvPath(path);
+  }, []);
+
   const handleOpenDetailLyricsSearch = useCallback((title: string, artist: string) => {
     setLyricsSearchTitle(title);
     setLyricsSearchArtist(artist);
@@ -430,15 +414,15 @@ export function PlayerView() {
   }, [state.selectedIndex, state.tracks]);
 
   const handleGenerateTranscript = useCallback(async () => {
-    if (state.selectedIndex === null || !llmBaseUrl.trim()) return;
+    if (state.selectedIndex === null) return;
     const index = state.selectedIndex;
     setIsGeneratingTranscript(true);
     try {
       const transcript = await invoke<string>("generate_transcript_with_llm", {
         filePath: state.tracks[index].path,
-        baseUrl: llmBaseUrl,
-        model: llmModel,
-        apiKey: llmApiKey,
+        baseUrl: "http://localhost:7868/v1",
+        model: "",
+        apiKey: "",
       });
       dispatch({ type: "UPDATE_TRANSCRIPT", index, transcript });
     } catch (e) {
@@ -447,7 +431,7 @@ export function PlayerView() {
     } finally {
       setIsGeneratingTranscript(false);
     }
-  }, [llmApiKey, llmBaseUrl, llmModel, state.selectedIndex, state.tracks]);
+  }, [state.selectedIndex, state.tracks]);
 
   // playMode 変化時に設定保存（設定ロード完了後のみ）
   const settingsLoadedRef = useRef(false);
@@ -1002,7 +986,7 @@ export function PlayerView() {
                 onGenerateTranscript={handleGenerateTranscript}
                 onRestoreTranscript={() => state.selectedIndex !== null && dispatch({ type: "RESTORE_TRANSCRIPT", index: state.selectedIndex })}
                 onRestoreLyrics={() => state.selectedIndex !== null && dispatch({ type: "RESTORE_LYRICS", index: state.selectedIndex })}
-                canGenerateTranscript={Boolean(llmBaseUrl.trim())}
+                canGenerateTranscript={true}
                 canRestoreTranscript={selectedTrack ? selectedTrack.transcript !== selectedTrack.tempTranscript : false}
                 canRestoreLyrics={selectedTrack ? selectedTrack.lyrics !== selectedTrack.tempLyrics : false}
                 lyricsSearchDisabled={lyricsSearchSources.length === 0}
@@ -1038,17 +1022,11 @@ export function PlayerView() {
             syncToggle={syncToggle}
             language={language}
             theme={theme}
-            llmBaseUrl={llmBaseUrl}
-            llmModel={llmModel}
-            llmApiKey={llmApiKey}
             onGoodFolderNameChange={handleGoodFolderNameChange}
             onBadFolderNameChange={handleBadFolderNameChange}
             onSyncToggleChange={handleSyncToggleChange}
             onLanguageChange={handleLanguageChange}
             onThemeChange={handleThemeChange}
-            onLlmBaseUrlChange={handleLlmBaseUrlChange}
-            onLlmModelChange={handleLlmModelChange}
-            onLlmApiKeyChange={handleLlmApiKeyChange}
             geniusApiKey={geniusApiKey}
             onGeniusApiKeyChange={handleGeniusApiKeyChange}
             lyricsUseGenius={lyricsUseGenius}
@@ -1059,6 +1037,8 @@ export function PlayerView() {
             onLyricsUseYtmusicChange={handleLyricsUseYtmusicChange}
             datasetUiPath={datasetUiPath}
             onDatasetUiPathChange={handleDatasetUiPathChange}
+            venvPath={venvPath}
+            onVenvPathChange={handleVenvPathChange}
             datasetUiDirConfig={datasetUiDirConfig}
           />
         </TabsContent>
