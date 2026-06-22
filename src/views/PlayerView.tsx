@@ -708,6 +708,9 @@ export function PlayerView() {
         e.stopPropagation();
         if (state.currentIndex === null && state.selectedIndex !== null) {
           dispatch({ type: "SET_PLAYBACK_TRACK", index: state.selectedIndex });
+        } else if (!autoPlay && !state.isPlaying && state.selectedIndex !== null && state.selectedIndex !== state.currentIndex) {
+          // 自動再生オフで停止中、かつ選択と再生が異なる → 選択ファイルを再生
+          dispatch({ type: "SET_PLAYBACK_TRACK", index: state.selectedIndex });
         } else {
           dispatch({ type: "SET_PLAYING", playing: !state.isPlaying });
         }
@@ -783,6 +786,11 @@ export function PlayerView() {
 
   const handlePlayPause = () => {
     if (state.currentIndex === null && state.selectedIndex !== null) {
+      dispatch({ type: "SET_PLAYBACK_TRACK", index: state.selectedIndex });
+      return;
+    }
+    // 自動再生オフで停止中、かつ選択と再生が異なる → 選択ファイルを再生
+    if (!autoPlay && !state.isPlaying && state.selectedIndex !== null && state.selectedIndex !== state.currentIndex) {
       dispatch({ type: "SET_PLAYBACK_TRACK", index: state.selectedIndex });
       return;
     }
