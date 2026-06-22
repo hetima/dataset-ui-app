@@ -421,8 +421,6 @@ export function PlayerView() {
       const transcript = await invoke<string>("generate_transcript_with_llm", {
         filePath: state.tracks[index].path,
         baseUrl: "http://localhost:7868/v1",
-        model: "",
-        apiKey: "",
       });
       dispatch({ type: "UPDATE_TRANSCRIPT", index, transcript });
     } catch (e) {
