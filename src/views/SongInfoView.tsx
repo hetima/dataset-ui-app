@@ -338,7 +338,7 @@ function TabGroup({
 
 // セクションタグの候補リスト
 const SECTION_CANDIDATES = [
-  "[Intro]", "[Verse]", "[Chorus]", "[Pre-Chorus]", "[Bridge]", "[Outro]",
+  "[Intro]", "[Verse]", "[Chorus]", "[Pre-Chorus]", "[Post-Chorus]", "[Bridge]", "[Outro]",
   "[Hook]", "[End]", "[Interlude]", "[Transition]", "[Modulation]", "[Drop]",
   "[Build-up]", "[Solo]", "[Guitar Solo]", "[Piano Solo]", "[Instrumental]",
   "[Break]", "[Fade Out]", "[Refrain]", "[Male Voice]", "[Female Voice]", "[Rap]",
@@ -400,14 +400,11 @@ function LyricsPane({
     mirror.appendChild(textNode);
     mirror.appendChild(span);
 
-    // スクロール量を合わせる
-    mirror.scrollTop = ta.scrollTop;
-
     const taRect = ta.getBoundingClientRect();
     const spanRect = span.getBoundingClientRect();
     setPopupPos({
-      top: spanRect.bottom - taRect.top,
-      left: spanRect.left - taRect.left,
+      top: spanRect.bottom - taRect.top - ta.scrollTop,
+      left: spanRect.left - taRect.left - ta.scrollLeft,
     });
   }, []);
 
@@ -468,6 +465,12 @@ function LyricsPane({
     onChange(e.target.value);
   }, [synced, onChange, calcPopupPos]);
 
+  const handleScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (synced || query === null) return;
+    const ta = e.currentTarget;
+    calcPopupPos(ta, ta.selectionStart);
+  }, [synced, query, calcPopupPos]);
+
   const showPopup = !synced && query !== null && candidates.length > 0 && popupPos !== null;
 
   return (
@@ -478,6 +481,7 @@ function LyricsPane({
           ref={textareaRef}
           value={value}
           onChange={handleChange}
+          onScroll={handleScroll}
           onKeyDown={handleKeyDown}
           className="flex-1 resize-none rounded-xs border bg-transparent p-2 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           spellCheck={false}
